@@ -5,7 +5,7 @@ import { MessageSquare, Zap, Clock, ShieldCheck, CheckCircle2 } from "lucide-rea
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="container mx-auto px-4 py-6 flex items-center justify-between">
+      <header className="container mx-auto px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2 font-bold text-2xl text-primary">
           <img src="/icon.png" alt="WhatsBiz AI" className="h-28 w-28 object-contain" />
           <span>WhatsBiz AI</span>

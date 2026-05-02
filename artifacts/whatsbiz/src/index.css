@@ -197,3 +197,12 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* Hide scrollbar globally */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
