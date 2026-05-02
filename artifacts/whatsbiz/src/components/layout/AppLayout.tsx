@@ -103,22 +103,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <div className="flex h-screen w-full bg-muted/20">
         <Sidebar className="border-r bg-sidebar border-sidebar-border">
-          <SidebarHeader
-            className="px-4 py-4"
-            style={{ background: "linear-gradient(135deg, #075E54 0%, #128C7E 60%, #25D366 100%)" }}
-          >
-            <div className="flex items-center gap-2.5">
+          <SidebarHeader className="px-4 py-4 border-b border-sidebar-border">
+            <div className="flex items-center gap-3">
               <img
                 src="/icon.png"
                 alt="WhatsBiz AI"
-                className="h-10 w-10 object-contain"
-                style={{ filter: "brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(10deg) drop-shadow(0 2px 8px rgba(0,0,0,0.3))" }}
+                className="h-12 w-12 object-contain"
               />
               <div>
-                <p className="font-extrabold text-base leading-tight tracking-tight text-white">
-                  WhatsBiz <span className="text-emerald-300">AI</span>
+                <p className="font-extrabold text-base leading-tight tracking-tight">
+                  WhatsBiz <span className="text-primary">AI</span>
                 </p>
-                <p className="text-[10px] text-emerald-200 font-medium">Automate. Engage. Grow.</p>
+                <p className="text-[10px] text-muted-foreground font-medium">Automate. Engage. Grow.</p>
               </div>
             </div>
           </SidebarHeader>
@@ -206,20 +202,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </Sidebar>
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header
-            className="h-14 flex items-center px-3 md:hidden shrink-0"
-            style={{ background: "linear-gradient(135deg, #075E54 0%, #128C7E 60%, #25D366 100%)" }}
-          >
-            <SidebarTrigger className="shrink-0 text-white hover:bg-white/10" />
+          <header className="h-14 border-b flex items-center px-3 bg-card md:hidden shrink-0">
+            <SidebarTrigger className="shrink-0" />
             <div className="flex items-center gap-2 ml-2 min-w-0">
               <img
                 src="/icon.png"
                 alt=""
-                className="h-8 w-8 object-contain shrink-0"
-                style={{ filter: "brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(10deg)" }}
+                className="h-9 w-9 object-contain shrink-0"
               />
-              <span className="font-extrabold text-white truncate">
-                WhatsBiz <span className="text-emerald-300">AI</span>
+              <span className="font-extrabold truncate">
+                WhatsBiz <span className="text-primary">AI</span>
               </span>
             </div>
           </header>
