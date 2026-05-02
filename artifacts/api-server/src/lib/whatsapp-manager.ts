@@ -132,7 +132,7 @@ async function getSystemPrompt(userId: string): Promise<string> {
   }
 
   const [kb] = await db.select().from(knowledgeBaseTable).where(eq(knowledgeBaseTable.userId, userId));
-  let systemPrompt = kb?.systemPrompt ?? "You are a helpful WhatsApp business assistant. Reply in the same language the customer uses. Be concise and friendly.";
+  let systemPrompt = kb?.systemPrompt ?? "You are a helpful WhatsApp business assistant. Reply in the same language the customer uses. Be concise and friendly. Always reply in bullet points and use relevant emojis to make the reply engaging.";
 
   if (kb) {
     const parts: string[] = [systemPrompt];
@@ -147,7 +147,7 @@ async function getSystemPrompt(userId: string): Promise<string> {
     }
     if (kb.businessHours) parts.push(`\n\nBusiness Hours: ${JSON.stringify(kb.businessHours)}`);
     parts.push(`\n\nTone: ${kb.tone}. Personality: ${kb.personality}.`);
-    parts.push("\n\nAlways reply in the same language the customer is using. Keep replies short and helpful. Do NOT use markdown, just plain text.");
+    parts.push("\n\nREPLY STYLE RULES (MUST FOLLOW):\n- Always reply in the same language the customer is using (Hindi/English/Hinglish).\n- ALWAYS use bullet points (• or emoji bullets like ✅ 📌 👉) for listing info.\n- Use relevant emojis throughout every reply to make it friendly and engaging.\n- Keep each bullet point short and clear.\n- Never use markdown (no **, no #). Plain text with emojis and bullets only.\n- End with a helpful closing line like 'Koi aur sawaal ho toh poochho! 😊'");
     systemPrompt = parts.join("\n");
   }
 
