@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -11,11 +11,13 @@ import {
   CreditCard, 
   Settings,
   LogOut,
-  Menu,
-  Phone
+  Phone,
+  WifiOff,
+  Wifi,
 } from "lucide-react";
 import { useLogout, useGetWhatsappStatus } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import {
   Sidebar,
   SidebarContent,
@@ -43,8 +45,46 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { logout } = useAuth();
   const logoutMutation = useLogout();
+  const { toast } = useToast();
 
-  const { data: waStatus } = useGetWhatsappStatus();
+  const { data: waStatus } = useGetWhatsappStatus({
+    query: {
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: true,
+    },
+  });
+
+  const prevStatusRef = useRef<string | null>(null);
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    const current = waStatus?.status ?? null;
+
+    if (!initializedRef.current) {
+      prevStatusRef.current = current;
+      initializedRef.current = true;
+      return;
+    }
+
+    const prev = prevStatusRef.current;
+
+    if (prev === "connected" && current !== "connected") {
+      toast({
+        variant: "destructive",
+        title: "WhatsApp Disconnect Ho Gaya",
+        description: "AI replies band ho gayi hain. Dashboard se dobara connect karo.",
+        duration: 0,
+      });
+    } else if (prev !== "connected" && current === "connected") {
+      toast({
+        title: "WhatsApp Connected!",
+        description: "AI replies phir se shuru ho gayi hain.",
+        duration: 5000,
+      });
+    }
+
+    prevStatusRef.current = current;
+  }, [waStatus?.status, toast]);
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -53,6 +93,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       }
     });
   };
+
+  const isConnected = waStatus?.status === "connected";
 
   return (
     <SidebarProvider>
@@ -84,11 +126,27 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </SidebarContent>
           <SidebarFooter className="p-4">
             {waStatus && (
-              <div className="mb-4 p-3 bg-card rounded-md border text-sm flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${waStatus.status === 'connected' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                <span className="font-medium text-foreground">
-                  {waStatus.status === 'connected' ? 'Connected' : 'Disconnected'}
-                </span>
+              <div className={`mb-4 p-3 rounded-md border text-sm flex items-center gap-2 transition-colors ${
+                isConnected
+                  ? "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400"
+                  : "bg-destructive/10 border-destructive/20 text-destructive"
+              }`}>
+                {isConnected ? (
+                  <Wifi className="w-4 h-4 shrink-0" />
+                ) : (
+                  <WifiOff className="w-4 h-4 shrink-0" />
+                )}
+                <div className="flex flex-col min-w-0">
+                  <span className="font-semibold text-xs">
+                    {isConnected ? "WhatsApp Connected" : "WhatsApp Disconnected"}
+                  </span>
+                  {isConnected && waStatus.phoneNumber && (
+                    <span className="text-xs opacity-70 truncate">{waStatus.phoneNumber}</span>
+                  )}
+                </div>
+                {isConnected && (
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-auto shrink-0" />
+                )}
               </div>
             )}
             <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
