@@ -11,6 +11,7 @@ import broadcastsRouter from "./broadcasts";
 import analyticsRouter from "./analytics";
 import billingRouter from "./billing";
 import notificationsRouter from "./notifications";
+import leadsRouter from "./leads";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(broadcastsRouter);
 router.use(analyticsRouter);
 router.use(billingRouter);
 router.use(notificationsRouter);
+router.use(leadsRouter);
 
 export default router;

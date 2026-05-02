@@ -14,6 +14,7 @@ import {
   Phone,
   WifiOff,
   Wifi,
+  Sparkles,
 } from "lucide-react";
 import { useLogout, useGetWhatsappStatus } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: MessageSquare, label: "Conversations", href: "/conversations" },
   { icon: Users, label: "Contacts", href: "/contacts" },
+  { icon: Sparkles, label: "Lead Scraper", href: "/leads" },
   { icon: BookOpen, label: "Knowledge Base", href: "/knowledge" },
   { icon: Megaphone, label: "Broadcasts", href: "/broadcasts" },
   { icon: BarChart, label: "Analytics", href: "/analytics" },

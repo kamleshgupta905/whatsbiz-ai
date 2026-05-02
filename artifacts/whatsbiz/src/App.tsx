@@ -19,6 +19,7 @@ import Broadcasts from "@/pages/broadcasts";
 import Analytics from "@/pages/analytics";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
+import Leads from "@/pages/leads";
 
 const queryClient = new QueryClient();
 
@@ -63,7 +64,8 @@ function Router() {
       <Route path="/broadcasts"><ProtectedRoute component={Broadcasts} /></Route>
       <Route path="/analytics"><ProtectedRoute component={Analytics} /></Route>
       <Route path="/billing"><ProtectedRoute component={Billing} /></Route>
-      <Route path="/settings"><ProtectedRoute component={Settings} /></Route> 
+      <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
+      <Route path="/leads"><ProtectedRoute component={Leads} /></Route>
       
       <Route component={NotFound} />
     </Switch>
