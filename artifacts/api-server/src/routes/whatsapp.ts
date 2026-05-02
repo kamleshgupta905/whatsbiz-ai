@@ -2,7 +2,8 @@ import { Router } from "express";
 import { db, whatsappSessionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpdateWhatsappSettingsBody } from "@workspace/api-zod";
-import { requireAuth, type AuthRequest } from "../lib/auth";
+import { requireAuth, type AuthRequest } from "../lib/auth.js";
+import { startSession, disconnectSession, getSession } from "../lib/whatsapp-manager.js";
 
 const router = Router();
 
@@ -10,9 +11,11 @@ router.get("/whatsapp/status", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
   const [session] = await db.select().from(whatsappSessionsTable).where(eq(whatsappSessionsTable.userId, user.id));
 
+  const inMemory = getSession(user.id);
+
   res.json({
-    status: session?.status ?? "disconnected",
-    phoneNumber: session?.phoneNumber ?? null,
+    status: inMemory?.status ?? session?.status ?? "disconnected",
+    phoneNumber: inMemory?.phoneNumber ?? session?.phoneNumber ?? null,
     lastConnected: session?.lastConnected ?? null,
     isAIEnabled: session?.isAIEnabled ?? true,
     awayMessage: session?.awayMessage ?? null,
@@ -20,24 +23,37 @@ router.get("/whatsapp/status", requireAuth, async (req, res) => {
   });
 });
 
+router.get("/whatsapp/qr", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const session = getSession(user.id);
+
+  if (!session) {
+    res.status(404).json({ error: "No active session. Call /connect first." });
+    return;
+  }
+
+  if (session.status === "connected") {
+    res.json({ status: "connected", qrBase64: null });
+    return;
+  }
+
+  res.json({
+    status: session.status,
+    qrBase64: session.qrBase64 ?? null,
+  });
+});
+
 router.post("/whatsapp/connect", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
 
-  // Simulate QR code generation (in real implementation this would use whatsapp-web.js)
-  const qrCode = `data:image/svg+xml;base64,${Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="white"/><text x="100" y="100" text-anchor="middle" font-size="12" fill="black">Scan QR Code</text><text x="100" y="120" text-anchor="middle" font-size="10" fill="gray">WHATSBIZ-${user.id.slice(0, 8)}</text></svg>`).toString("base64")}`;
+  startSession(user.id).catch(() => {});
 
-  await db.update(whatsappSessionsTable)
-    .set({ status: "qr_ready", qrCode, updatedAt: new Date() })
-    .where(eq(whatsappSessionsTable.userId, user.id));
-
-  res.json({ qrCode, status: "qr_ready" });
+  res.json({ status: "connecting", message: "Session started. Poll /whatsapp/qr for QR code." });
 });
 
 router.post("/whatsapp/disconnect", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  await db.update(whatsappSessionsTable)
-    .set({ status: "disconnected", phoneNumber: null, sessionData: null, qrCode: null, lastDisconnect: new Date(), updatedAt: new Date() })
-    .where(eq(whatsappSessionsTable.userId, user.id));
+  await disconnectSession(user.id);
   res.json({ success: true });
 });
 
