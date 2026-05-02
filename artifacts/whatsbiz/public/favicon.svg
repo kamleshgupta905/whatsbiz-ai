@@ -1,24 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
-    <linearGradient id="amber" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FCD34D"/>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064E3B"/>
+      <stop offset="50%" stop-color="#065F46"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B"/>
       <stop offset="100%" stop-color="#D97706"/>
     </linearGradient>
   </defs>
 
-  <!-- Dark rounded-square background -->
-  <rect width="64" height="64" rx="14" fill="#111827"/>
+  <!-- Dark green rounded square background -->
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
 
-  <!-- WhatsApp chat bubble in orange/amber -->
-  <path d="M32 9 C18.2 9 7 19.1 7 31.5 c0 5.3 2 10.2 5.4 14L10 55 l10.4-2.7 C23.3 53.4 27.5 54.2 32 54.2 c13.8 0 25-10.1 25-22.7 C57 19.1 45.8 9 32 9 Z" fill="url(#amber)"/>
+  <!-- Chat bubble body (solid white) -->
+  <path d="M11 18 Q11 11 18 11 L46 11 Q53 11 53 18 L53 36 Q53 43 46 43 L36 43 L32 52 L28 43 L18 43 Q11 43 11 36 Z" fill="white"/>
 
-  <!-- Inner white circle area for contrast -->
-  <ellipse cx="32" cy="31" rx="16" ry="13" fill="#111827" opacity="0.85"/>
+  <!-- Lightning bolt (amber/gold) inside bubble -->
+  <path d="M34.5 17 L26 31 H31.5 L29.5 45 L38 31 H32.5 Z" fill="url(#badge)"/>
 
-  <!-- Bold "W" letter in amber -->
-  <text x="32" y="37" font-family="Arial Black,Arial,sans-serif" font-size="17" font-weight="900" fill="url(#amber)" text-anchor="middle" letter-spacing="-1">W</text>
-
-  <!-- Small "AI" badge top-right -->
-  <rect x="41" y="7" width="16" height="10" rx="5" fill="#F59E0B"/>
-  <text x="49" y="15" font-family="Arial Black,Arial,sans-serif" font-size="6.5" font-weight="900" fill="#111827" text-anchor="middle">AI</text>
+  <!-- AI dot badge - top right corner -->
+  <circle cx="50" cy="14" r="8" fill="url(#badge)"/>
+  <text x="50" y="18" font-family="Arial Black,Arial,sans-serif" font-size="7.5" font-weight="900" fill="white" text-anchor="middle">AI</text>
 </svg>
