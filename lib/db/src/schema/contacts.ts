@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, jsonb, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, jsonb, numeric, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -17,6 +17,7 @@ export const contactsTable = pgTable("contacts", {
   firstContactAt: timestamp("first_contact_at").defaultNow().notNull(),
   totalOrders: integer("total_orders").default(0).notNull(),
   totalRevenue: numeric("total_revenue", { precision: 10, scale: 2 }).default("0").notNull(),
+  dndEnabled: boolean("dnd_enabled").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

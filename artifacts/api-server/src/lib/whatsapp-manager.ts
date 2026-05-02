@@ -395,8 +395,42 @@ async function createSocket(userId: string, state: SessionState, authDir: string
       const customerPhone = rawPhone.startsWith("+") ? rawPhone : `+${rawPhone}`;
       const pushName = msg.pushName ?? null;
 
-      // Fire-and-forget read receipt — don't block AI reply
+      // Fire-and-forget read receipt
       sock.readMessages([msg.key]).catch(() => {});
+
+      // ── DND / opt-out detection ─────────────────────────────────────────────
+      // If the customer sends a STOP-like keyword, mark them DND and reply once
+      const stopKeywords = /^(stop|band karo|band kar|unsubscribe|opt.?out|no more|mat bhejo|nahi chahiye|hatao|remove me)\s*$/i;
+      const startKeywords = /^(start|subscribe|opt.?in|haan|yes|shuru karo)\s*$/i;
+
+      if (stopKeywords.test(incomingText.trim())) {
+        // Mark contact as DND in DB (fire-and-forget)
+        db.update(contactsTable)
+          .set({ dndEnabled: true, updatedAt: new Date() })
+          .where(and(eq(contactsTable.userId, userId), eq(contactsTable.phone, customerPhone)))
+          .catch(() => {});
+        // Send a one-time confirmation
+        try {
+          await sock.sendMessage(remoteJid, {
+            text: "✅ You have been unsubscribed from our broadcast messages. Reply *START* anytime to re-subscribe.",
+          });
+        } catch {}
+        continue; // Don't trigger AI reply for STOP
+      }
+
+      if (startKeywords.test(incomingText.trim())) {
+        // Re-subscribe the contact
+        db.update(contactsTable)
+          .set({ dndEnabled: false, updatedAt: new Date() })
+          .where(and(eq(contactsTable.userId, userId), eq(contactsTable.phone, customerPhone)))
+          .catch(() => {});
+        try {
+          await sock.sendMessage(remoteJid, {
+            text: "✅ You have been re-subscribed to our messages. Thank you!",
+          });
+        } catch {}
+        continue;
+      }
 
       // Use in-memory flag — no DB round-trip per message
       if (!state.isAIEnabled) continue;

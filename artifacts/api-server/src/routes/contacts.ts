@@ -19,6 +19,7 @@ function formatContact(c: typeof contactsTable.$inferSelect) {
     firstContactAt: c.firstContactAt,
     totalOrders: c.totalOrders,
     totalRevenue: Number(c.totalRevenue ?? 0),
+    dndEnabled: c.dndEnabled,
   };
 }
 
@@ -96,6 +97,25 @@ router.patch("/contacts/:id", requireAuth, async (req, res) => {
     .returning();
 
   res.json(formatContact(updated));
+});
+
+// ── DND toggle ────────────────────────────────────────────────────────────────
+router.patch("/contacts/:id/dnd", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const { id } = req.params;
+  const { dndEnabled } = req.body as { dndEnabled: boolean };
+
+  const [updated] = await db.update(contactsTable)
+    .set({ dndEnabled, updatedAt: new Date() })
+    .where(and(eq(contactsTable.id, id), eq(contactsTable.userId, user.id)))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Contact not found" });
+    return;
+  }
+
+  res.json({ success: true, dndEnabled: updated.dndEnabled });
 });
 
 router.delete("/contacts/:id", requireAuth, async (req, res) => {

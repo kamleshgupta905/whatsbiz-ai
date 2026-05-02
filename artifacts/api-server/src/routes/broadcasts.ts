@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, broadcastsTable, contactsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { CreateBroadcastBody } from "@workspace/api-zod";
 import { requireAuth, type AuthRequest } from "../lib/auth";
@@ -83,15 +83,23 @@ router.post("/broadcasts/:id/send", requireAuth, async (req, res) => {
     return;
   }
 
-  // Fetch contacts to send to
+  // Fetch contacts to send to — exclude DND contacts
   let allPhones: string[] = [];
   if (broadcast.recipientType === "all") {
     const contacts = await db.select({ phone: contactsTable.phone })
       .from(contactsTable)
-      .where(eq(contactsTable.userId, user.id));
+      .where(and(eq(contactsTable.userId, user.id), eq(contactsTable.dndEnabled, false)));
     allPhones = contacts.map((c) => c.phone);
   } else {
-    allPhones = (broadcast.recipients as string[]) ?? [];
+    // For custom list: filter out any DND contacts by phone lookup
+    const customPhones = (broadcast.recipients as string[]) ?? [];
+    if (customPhones.length > 0) {
+      const dndContacts = await db.select({ phone: contactsTable.phone })
+        .from(contactsTable)
+        .where(and(eq(contactsTable.userId, user.id), eq(contactsTable.dndEnabled, true)));
+      const dndSet = new Set(dndContacts.map(c => c.phone));
+      allPhones = customPhones.filter(p => !dndSet.has(p));
+    }
   }
 
   if (allPhones.length === 0) {
