@@ -17,8 +17,8 @@ import OpenAI from "openai";
 const silentLogger = pino({ level: "silent" });
 
 const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: "https://integrate.api.nvidia.com/v1",
+  apiKey: process.env.NVIDIA_API_KEY,
 });
 
 interface SessionState {
@@ -105,61 +105,51 @@ export async function startSession(userId: string): Promise<void> {
 
 async function generateAIReply(userId: string, customerPhone: string, incomingText: string): Promise<string | null> {
   try {
-    const [kb] = await db.select().from(knowledgeBaseTable).where(eq(knowledgeBaseTable.userId, userId));
+    // Fetch KB and contact simultaneously
+    const [
+      [kb],
+      [contact],
+    ] = await Promise.all([
+      db.select().from(knowledgeBaseTable).where(eq(knowledgeBaseTable.userId, userId)),
+      db.select().from(contactsTable).where(and(eq(contactsTable.userId, userId), eq(contactsTable.phone, customerPhone))),
+    ]);
 
+    // Build system prompt
     let systemPrompt = kb?.systemPrompt ?? "You are a helpful WhatsApp business assistant. Reply in the same language the customer uses. Be concise and friendly.";
-
     if (kb) {
       const parts: string[] = [systemPrompt];
-
       if (kb.rawContent) parts.push(`\n\nBusiness Info:\n${kb.rawContent}`);
-
       if (kb.faqs && kb.faqs.length > 0) {
         parts.push("\n\nFAQs:");
         kb.faqs.forEach(f => parts.push(`Q: ${f.question}\nA: ${f.answer}`));
       }
-
       if (kb.products && kb.products.length > 0) {
         parts.push("\n\nProducts/Services:");
         kb.products.forEach(p => parts.push(`- ${p.name}: ₹${p.price} — ${p.description ?? ""} (${p.inStock ? "In Stock" : "Out of Stock"})`));
       }
-
-      if (kb.businessHours) {
-        parts.push(`\n\nBusiness Hours: ${JSON.stringify(kb.businessHours)}`);
-      }
-
+      if (kb.businessHours) parts.push(`\n\nBusiness Hours: ${JSON.stringify(kb.businessHours)}`);
       parts.push(`\n\nTone: ${kb.tone}. Personality: ${kb.personality}.`);
       parts.push("\n\nAlways reply in the same language the customer is using. Keep replies short and helpful. Do NOT use markdown, just plain text.");
-
       systemPrompt = parts.join("\n");
     }
 
-    const [contact] = await db.select().from(contactsTable)
-      .where(and(eq(contactsTable.userId, userId), eq(contactsTable.phone, customerPhone)));
-
-    let conversationId: string | null = null;
+    // Fetch conversation history if contact exists
+    const history: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
     if (contact) {
       const [conv] = await db.select().from(conversationsTable)
         .where(and(eq(conversationsTable.userId, userId), eq(conversationsTable.contactId, contact.id)));
-      conversationId = conv?.id ?? null;
-    }
-
-    const history: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
-    if (conversationId) {
-      const recent = await db.select().from(messagesTable)
-        .where(eq(messagesTable.conversationId, conversationId));
-      const last10 = recent.slice(-10);
-      for (const m of last10) {
-        history.push({
-          role: m.sender === "CUSTOMER" ? "user" : "assistant",
-          content: m.content,
+      if (conv) {
+        const recent = await db.select().from(messagesTable)
+          .where(eq(messagesTable.conversationId, conv.id));
+        recent.slice(-8).forEach(m => {
+          history.push({ role: m.sender === "CUSTOMER" ? "user" : "assistant", content: m.content });
         });
       }
     }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 500,
+      model: "meta/llama-3.1-8b-instruct",
+      max_tokens: 400,
       messages: [
         { role: "system", content: systemPrompt },
         ...history,
@@ -167,7 +157,7 @@ async function generateAIReply(userId: string, customerPhone: string, incomingTe
       ],
     });
 
-    return response.choices[0]?.message?.content ?? null;
+    return response.choices[0]?.message?.content?.trim() ?? null;
   } catch {
     return null;
   }
@@ -239,7 +229,7 @@ async function saveMessageToDB(
         sender: "AI",
         content: aiReply,
         messageType: "TEXT",
-        aiModel: "gpt-5-mini",
+        aiModel: "llama-3.1-8b",
       },
     ]);
   } catch {}
@@ -350,7 +340,8 @@ async function createSocket(userId: string, state: SessionState, authDir: string
 
       try {
         await sock.sendMessage(remoteJid, { text: aiReply });
-        await saveMessageToDB(userId, customerPhone, pushName, incomingText, aiReply, msg.key.id ?? null);
+        // Fire-and-forget — don't block the reply on DB writes
+        saveMessageToDB(userId, customerPhone, pushName, incomingText, aiReply, msg.key.id ?? null).catch(() => {});
       } catch {}
     }
   });
