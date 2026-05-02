@@ -1,170 +1,199 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCompleteOnboarding, useConnectWhatsapp, useGetWhatsappStatus } from "@workspace/api-client-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { useUpdateKnowledgeBase, useConnectWhatsapp, useGetWhatsappStatus, getGetWhatsappStatusQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { QRCodeSVG } from "qrcode.react";
+import { CheckCircle2, Smartphone, Zap } from "lucide-react";
+
+const DEFAULT_PROMPT = `You are a helpful WhatsApp assistant for {businessName}.
+
+Reply in a friendly, professional tone. Keep answers short and clear.
+
+Key information about the business:
+- [Add your business timings here, e.g. Open Mon-Sat 10AM to 8PM]
+- [Add your location/area here]
+- [Add your main products or services here]
+- [Add pricing or offers here]
+- [Add return/delivery policy here]
+
+Rules:
+- If a customer asks something you don't know, say: "I'll connect you with our team shortly."
+- Always greet new customers warmly.
+- For orders or appointments, ask for their name and confirm details.`;
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const [step, setStep] = useState(user?.onboardingStep || 1);
-  const completeOnboardingMutation = useCompleteOnboarding();
-  const connectWaMutation = useConnectWhatsapp();
-  
-  const [formData, setFormData] = useState({
-    businessType: "",
-    businessSize: "",
-    language: "english",
-    faqText: "",
+  const queryClient = useQueryClient();
+
+  const [step, setStep] = useState(1);
+  const [systemPrompt, setSystemPrompt] = useState(
+    DEFAULT_PROMPT.replace("{businessName}", user?.businessName || "our business")
+  );
+  const [qrValue, setQrValue] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
+
+  const updateKb = useUpdateKnowledgeBase();
+  const connectWa = useConnectWhatsapp();
+  const { data: waStatus } = useGetWhatsappStatus({
+    query: {
+      queryKey: getGetWhatsappStatusQueryKey(),
+      enabled: step === 2,
+      refetchInterval: connected ? false : 4000,
+    }
   });
 
-  const [qrCode, setQrCode] = useState<string | null>(null);
+  useEffect(() => {
+    if (waStatus?.status === "connected" && step === 2) {
+      setConnected(true);
+    }
+  }, [waStatus, step]);
 
-  const handleNext = () => {
-    completeOnboardingMutation.mutate({
-      data: {
-        step,
-        data: formData
-      }
-    }, {
+  const handleSavePromptAndContinue = () => {
+    updateKb.mutate({ data: { systemPrompt } }, {
       onSuccess: () => {
-        if (step === 3) {
-          connectWaMutation.mutate(undefined, {
-            onSuccess: (res) => {
-              if (res.qrCode) setQrCode(res.qrCode);
-              setStep(4);
+        connectWa.mutate(undefined, {
+          onSuccess: (res) => {
+            if (res.qrCode) {
+              setQrValue(`WHATSBIZ-WA-${user?.id}-${Date.now()}`);
             }
-          });
-        } else if (step === 5) {
-          setLocation("/dashboard");
-        } else {
-          setStep(step + 1);
-        }
+            setStep(2);
+            queryClient.invalidateQueries({ queryKey: getGetWhatsappStatusQueryKey() });
+          }
+        });
       }
     });
+  };
+
+  const handleDone = () => {
+    setLocation("/dashboard");
   };
 
   return (
     <div className="min-h-screen bg-muted/20 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-2xl">
-        <div className="mb-8 flex items-center justify-between">
-          {[1, 2, 3, 4, 5].map((s) => (
-            <div key={s} className="flex flex-col items-center flex-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                s === step ? "bg-primary text-primary-foreground" : 
-                s < step ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-              }`}>
-                {s}
+
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 text-2xl font-bold text-primary mb-2">
+            <Zap className="w-6 h-6" />
+            WhatsBiz AI Setup
+          </div>
+          <div className="flex items-center justify-center gap-4 mt-4">
+            {[
+              { n: 1, label: "System Prompt" },
+              { n: 2, label: "Connect WhatsApp" },
+            ].map(({ n, label }) => (
+              <div key={n} className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                  n < step ? "bg-primary text-white" :
+                  n === step ? "bg-primary text-white" :
+                  "bg-muted text-muted-foreground"
+                }`}>
+                  {n < step ? <CheckCircle2 className="w-4 h-4" /> : n}
+                </div>
+                <span className={`text-sm font-medium ${n === step ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
+                {n < 2 && <div className="w-12 h-0.5 bg-border" />}
               </div>
-              <div className={`h-1 w-full mt-4 ${s < 5 ? (s < step ? "bg-primary/20" : "bg-muted") : ""}`} />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {step === 1 && "Tell us about your business"}
-              {step === 2 && "Train your AI"}
-              {step === 3 && "Review Prompt"}
-              {step === 4 && "Connect WhatsApp"}
-              {step === 5 && "You're All Set!"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {step === 1 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Industry / Business Type</Label>
-                  <Select value={formData.businessType} onValueChange={(v) => setFormData({...formData, businessType: v})}>
-                    <SelectTrigger><SelectValue placeholder="e.g. Retail, Real Estate, Coaching" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="retail">Retail / Kirana</SelectItem>
-                      <SelectItem value="realestate">Real Estate</SelectItem>
-                      <SelectItem value="coaching">Coaching / Education</SelectItem>
-                      <SelectItem value="restaurant">Restaurant / Cafe</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Primary Language</Label>
-                  <Select value={formData.language} onValueChange={(v) => setFormData({...formData, language: v})}>
-                    <SelectTrigger><SelectValue placeholder="Select Language" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="english">English</SelectItem>
-                      <SelectItem value="hinglish">Hinglish</SelectItem>
-                      <SelectItem value="hindi">Hindi</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+        {step === 1 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Apna AI System Prompt likho</CardTitle>
+              <CardDescription>
+                Neeche likha hua prompt already bhara hua hai — apni business details se replace karo aur bas ho jayega. Yahi aapke AI ka "brain" hai.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Textarea
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                className="min-h-[320px] font-mono text-sm leading-relaxed"
+                placeholder="Enter your AI system prompt here..."
+                data-testid="input-system-prompt"
+              />
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm text-muted-foreground">
+                <strong className="text-foreground">Tip:</strong> Curly braces wali cheezein replace karo — jaise business timings, products, pricing aur location. Jitna zyada info, utna smart AI.
               </div>
-            )}
-
-            {step === 2 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Paste your FAQs or Catalog text</Label>
-                  <Textarea 
-                    className="min-h-[200px]"
-                    placeholder="We are open 9AM to 9PM. Delivery is free over ₹500..."
-                    value={formData.faqText}
-                    onChange={(e) => setFormData({...formData, faqText: e.target.value})}
-                  />
-                </div>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-4">
-                <p className="text-muted-foreground">We've generated a prompt for your AI based on your inputs.</p>
-                <div className="bg-muted p-4 rounded-md font-mono text-sm whitespace-pre-wrap">
-                  You are a helpful assistant for {user?.businessName}.
-                  Tone: Friendly and professional.
-                  Language: {formData.language}.
-                  Knowledge: {formData.faqText.substring(0, 100)}...
-                </div>
-              </div>
-            )}
-
-            {step === 4 && (
-              <div className="space-y-4 flex flex-col items-center">
-                <p className="text-center text-muted-foreground">Open WhatsApp on your phone, go to Linked Devices, and scan this QR code.</p>
-                {qrCode ? (
-                  <div className="bg-white p-4 rounded-lg border inline-block">
-                    <img src={qrCode} alt="WhatsApp QR Code" className="w-64 h-64" />
-                  </div>
-                ) : (
-                  <div className="w-64 h-64 bg-muted animate-pulse rounded-lg flex items-center justify-center">
-                    Loading QR...
-                  </div>
-                )}
-                <Button variant="outline" onClick={() => handleNext()}>I've scanned it (Skip for demo)</Button>
-              </div>
-            )}
-
-            {step === 5 && (
-              <div className="text-center space-y-4 py-8">
-                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                  <div className="w-10 h-10 bg-primary rounded-full" />
-                </div>
-                <h3 className="text-2xl font-bold">Your AI is live!</h3>
-                <p className="text-muted-foreground">Your WhatsApp is now on autopilot.</p>
-              </div>
-            )}
-
-            <div className="mt-8 flex justify-end">
-              <Button onClick={handleNext} disabled={completeOnboardingMutation.isPending}>
-                {completeOnboardingMutation.isPending ? "Saving..." : (step === 5 ? "Go to Dashboard" : "Next Step")}
+              <Button
+                className="w-full h-12 text-base font-semibold"
+                onClick={handleSavePromptAndContinue}
+                disabled={updateKb.isPending || connectWa.isPending || !systemPrompt.trim()}
+                data-testid="button-save-prompt"
+              >
+                {updateKb.isPending || connectWa.isPending ? "Saving..." : "Save & Connect WhatsApp"}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 2 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Smartphone className="w-5 h-5 text-primary" />
+                WhatsApp Connect karo
+              </CardTitle>
+              <CardDescription>
+                Phone mein WhatsApp kholo → Menu (3 dots) → Linked Devices → Link a Device → QR scan karo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {connected ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-10 h-10 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground">WhatsApp Connected!</h3>
+                    <p className="text-muted-foreground mt-1">Aapka AI ab live hai. Customers ke messages automatically handle hone lagenge.</p>
+                  </div>
+                  <Button className="w-full h-12 text-base font-semibold" onClick={handleDone}>
+                    Dashboard par jao
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col items-center gap-4">
+                    {qrValue ? (
+                      <div className="bg-white p-4 rounded-2xl border-2 border-border shadow-sm inline-block">
+                        <QRCodeSVG
+                          value={qrValue}
+                          size={220}
+                          level="M"
+                          includeMargin={false}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-[220px] h-[220px] bg-muted animate-pulse rounded-2xl flex items-center justify-center">
+                        <span className="text-muted-foreground text-sm">Generating QR...</span>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground text-center max-w-xs">
+                      QR code 30 seconds mein expire hota hai. Agar expire ho jaye to page refresh karo.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-sm text-muted-foreground flex items-center gap-2">
+                      <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse inline-block" />
+                      WhatsApp scan hone ka wait kar raha hai...
+                    </span>
+                    <Button variant="outline" size="sm" onClick={handleDone}>
+                      Skip for now
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

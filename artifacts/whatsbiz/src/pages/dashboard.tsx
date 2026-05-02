@@ -31,7 +31,7 @@ export default function Dashboard() {
               <Zap className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-primary-foreground">Trial Period Active</h3>
+              <h3 className="font-semibold text-foreground">Trial Period Active</h3>
               <p className="text-sm text-muted-foreground">{subscription.daysRemaining} days remaining in your free trial.</p>
             </div>
           </div>
