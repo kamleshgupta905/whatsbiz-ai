@@ -120,14 +120,24 @@ export default function Login() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.15 }}
-        className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 bg-background"
+        className="flex-1 flex flex-col bg-background"
       >
-        <div className="w-full max-w-md">
-          {/* Mobile-only logo */}
-          <div className="lg:hidden flex justify-center mb-8">
-            <img src="/logo-transparent.png" alt="WhatsBiz AI" className="h-12 w-auto object-contain" />
+        {/* Branded top band — visible when left panel is hidden */}
+        <div
+          className="lg:hidden flex flex-col items-center justify-center py-10 px-6"
+          style={{ background: "linear-gradient(145deg, #075E54 0%, #128C7E 45%, #25D366 100%)" }}
+        >
+          <div className="bg-white/95 rounded-3xl px-8 py-5 shadow-xl shadow-black/15">
+            <img
+              src="/logo-transparent.png"
+              alt="WhatsBiz AI"
+              className="h-24 w-auto object-contain"
+            />
           </div>
+        </div>
 
+        <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-md">
           <div className="mb-8">
             <h1 className="text-3xl font-extrabold tracking-tight">Welcome back</h1>
             <p className="text-muted-foreground mt-1.5">Sign in to your WhatsBiz AI account</p>
@@ -205,6 +215,7 @@ export default function Login() {
           <p className="mt-8 text-center text-[11px] text-muted-foreground/60">
             By signing in you agree to WhatsBiz AI Terms of Service &amp; Privacy Policy.
           </p>
+        </div>
         </div>
       </motion.div>
     </div>
