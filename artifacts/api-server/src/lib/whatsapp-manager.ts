@@ -6,14 +6,20 @@ import makeWASocket, {
   type WASocket,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
-import { db, whatsappSessionsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, whatsappSessionsTable, knowledgeBaseTable, contactsTable, conversationsTable, messagesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import qrcode from "qrcode";
 import { mkdir } from "fs/promises";
 import { join } from "path";
 import pino from "pino";
+import OpenAI from "openai";
 
 const silentLogger = pino({ level: "silent" });
+
+const openai = new OpenAI({
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+});
 
 interface SessionState {
   socket: WASocket | null;
@@ -53,6 +59,148 @@ export async function startSession(userId: string): Promise<void> {
   sessions.set(userId, state);
 
   await createSocket(userId, state, authDir);
+}
+
+async function generateAIReply(userId: string, customerPhone: string, incomingText: string): Promise<string | null> {
+  try {
+    const [kb] = await db.select().from(knowledgeBaseTable).where(eq(knowledgeBaseTable.userId, userId));
+
+    let systemPrompt = kb?.systemPrompt ?? "You are a helpful WhatsApp business assistant. Reply in the same language the customer uses. Be concise and friendly.";
+
+    if (kb) {
+      const parts: string[] = [systemPrompt];
+
+      if (kb.rawContent) parts.push(`\n\nBusiness Info:\n${kb.rawContent}`);
+
+      if (kb.faqs && kb.faqs.length > 0) {
+        parts.push("\n\nFAQs:");
+        kb.faqs.forEach(f => parts.push(`Q: ${f.question}\nA: ${f.answer}`));
+      }
+
+      if (kb.products && kb.products.length > 0) {
+        parts.push("\n\nProducts/Services:");
+        kb.products.forEach(p => parts.push(`- ${p.name}: ₹${p.price} — ${p.description ?? ""} (${p.inStock ? "In Stock" : "Out of Stock"})`));
+      }
+
+      if (kb.businessHours) {
+        parts.push(`\n\nBusiness Hours: ${JSON.stringify(kb.businessHours)}`);
+      }
+
+      parts.push(`\n\nTone: ${kb.tone}. Personality: ${kb.personality}.`);
+      parts.push("\n\nAlways reply in the same language the customer is using. Keep replies short and helpful. Do NOT use markdown, just plain text.");
+
+      systemPrompt = parts.join("\n");
+    }
+
+    const [contact] = await db.select().from(contactsTable)
+      .where(and(eq(contactsTable.userId, userId), eq(contactsTable.phone, customerPhone)));
+
+    let conversationId: string | null = null;
+    if (contact) {
+      const [conv] = await db.select().from(conversationsTable)
+        .where(and(eq(conversationsTable.userId, userId), eq(conversationsTable.contactId, contact.id)));
+      conversationId = conv?.id ?? null;
+    }
+
+    const history: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+    if (conversationId) {
+      const recent = await db.select().from(messagesTable)
+        .where(eq(messagesTable.conversationId, conversationId));
+      const last10 = recent.slice(-10);
+      for (const m of last10) {
+        history.push({
+          role: m.sender === "CUSTOMER" ? "user" : "assistant",
+          content: m.content,
+        });
+      }
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-5-mini",
+      max_completion_tokens: 500,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...history,
+        { role: "user", content: incomingText },
+      ],
+    });
+
+    return response.choices[0]?.message?.content ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveMessageToDB(
+  userId: string,
+  customerPhone: string,
+  customerName: string | null,
+  incomingText: string,
+  aiReply: string,
+  whatsappMsgId: string | null,
+): Promise<void> {
+  try {
+    let contactId: string;
+    const [existingContact] = await db.select().from(contactsTable)
+      .where(and(eq(contactsTable.userId, userId), eq(contactsTable.phone, customerPhone)));
+
+    if (existingContact) {
+      contactId = existingContact.id;
+      await db.update(contactsTable)
+        .set({ totalMessages: (existingContact.totalMessages ?? 0) + 2, lastMessageAt: new Date(), updatedAt: new Date(), name: customerName ?? existingContact.name })
+        .where(eq(contactsTable.id, contactId));
+    } else {
+      const [newContact] = await db.insert(contactsTable).values({
+        userId,
+        phone: customerPhone,
+        name: customerName,
+        totalMessages: 2,
+        lastMessageAt: new Date(),
+      }).returning();
+      contactId = newContact.id;
+    }
+
+    let conversationId: string;
+    const [existingConv] = await db.select().from(conversationsTable)
+      .where(and(eq(conversationsTable.userId, userId), eq(conversationsTable.contactId, contactId)));
+
+    if (existingConv) {
+      conversationId = existingConv.id;
+      await db.update(conversationsTable)
+        .set({ lastMessage: aiReply, lastMessageAt: new Date(), unreadCount: existingConv.unreadCount + 1, updatedAt: new Date() })
+        .where(eq(conversationsTable.id, conversationId));
+    } else {
+      const [newConv] = await db.insert(conversationsTable).values({
+        userId,
+        contactId,
+        customerPhone,
+        customerName,
+        status: "open",
+        isAIEnabled: true,
+        lastMessage: aiReply,
+        lastMessageAt: new Date(),
+        unreadCount: 1,
+      }).returning();
+      conversationId = newConv.id;
+    }
+
+    await db.insert(messagesTable).values([
+      {
+        conversationId,
+        sender: "CUSTOMER",
+        content: incomingText,
+        messageType: "TEXT",
+        whatsappMsgId,
+      },
+      {
+        conversationId,
+        sender: "AI",
+        content: aiReply,
+        messageType: "TEXT",
+        aiModel: "gpt-5-mini",
+      },
+    ]);
+  } catch {}
 }
 
 async function createSocket(userId: string, state: SessionState, authDir: string): Promise<void> {
@@ -120,6 +268,43 @@ async function createSocket(userId: string, state: SessionState, authDir: string
       await db.update(whatsappSessionsTable)
         .set({ status: "connected", phoneNumber: phone ? `+${phone}` : null, qrCode: null, lastConnected: new Date(), updatedAt: new Date() })
         .where(eq(whatsappSessionsTable.userId, userId));
+    }
+  });
+
+  sock.ev.on("messages.upsert", async ({ messages, type }) => {
+    if (type !== "notify") return;
+
+    for (const msg of messages) {
+      if (msg.key.fromMe) continue;
+      if (!msg.message) continue;
+
+      const remoteJid = msg.key.remoteJid;
+      if (!remoteJid || remoteJid.endsWith("@g.us")) continue;
+
+      const incomingText =
+        msg.message.conversation ??
+        msg.message.extendedTextMessage?.text ??
+        null;
+
+      if (!incomingText) continue;
+
+      const customerPhone = remoteJid.split("@")[0];
+      const pushName = msg.pushName ?? null;
+
+      try {
+        await sock.readMessages([msg.key]);
+      } catch {}
+
+      const [session] = await db.select().from(whatsappSessionsTable).where(eq(whatsappSessionsTable.userId, userId));
+      if (!session?.isAIEnabled) continue;
+
+      const aiReply = await generateAIReply(userId, customerPhone, incomingText);
+      if (!aiReply) continue;
+
+      try {
+        await sock.sendMessage(remoteJid, { text: aiReply });
+        await saveMessageToDB(userId, customerPhone, pushName, incomingText, aiReply, msg.key.id ?? null);
+      } catch {}
     }
   });
 }
