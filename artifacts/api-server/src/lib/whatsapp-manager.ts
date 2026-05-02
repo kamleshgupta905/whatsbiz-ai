@@ -9,10 +9,14 @@ import { Boom } from "@hapi/boom";
 import { db, whatsappSessionsTable, knowledgeBaseTable, contactsTable, conversationsTable, messagesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import qrcode from "qrcode";
-import { mkdir, rm } from "fs/promises";
+import { mkdir } from "fs/promises";
 import { join } from "path";
+import { exec } from "child_process";
+import { promisify } from "util";
 import pino from "pino";
 import OpenAI from "openai";
+
+const execAsync = promisify(exec);
 
 const silentLogger = pino({ level: "silent" });
 
@@ -100,7 +104,7 @@ export async function startSession(userId: string, forceNew = false): Promise<vo
 
   // forceNew = true means user explicitly clicked "Connect" — wipe stale creds so fresh QR generates
   if (forceNew) {
-    await rm(authDir, { recursive: true, force: true });
+    try { await execAsync(`rm -rf "${authDir}"`); } catch {}
   }
   await mkdir(authDir, { recursive: true });
 
@@ -298,70 +302,75 @@ async function createSocket(userId: string, state: SessionState, authDir: string
 
   sock.ev.on("creds.update", saveCreds);
 
-  sock.ev.on("connection.update", async (update) => {
-    const { connection, lastDisconnect, qr } = update;
-
-    if (qr) {
+  sock.ev.on("connection.update", (update) => {
+    void (async () => {
       try {
-        const qrBase64 = await qrcode.toDataURL(qr, { width: 300, margin: 2 });
-        state.qrBase64 = qrBase64;
-        state.status = "qr_ready";
-        console.log(`[WA] QR generated for user ${userId}`);
-        await db.update(whatsappSessionsTable)
-          .set({ status: "qr_ready", qrCode: qrBase64, updatedAt: new Date() })
-          .where(eq(whatsappSessionsTable.userId, userId));
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+          try {
+            const qrBase64 = await qrcode.toDataURL(qr, { width: 300, margin: 2 });
+            state.qrBase64 = qrBase64;
+            state.status = "qr_ready";
+            console.log(`[WA] QR generated for user ${userId}`);
+            await db.update(whatsappSessionsTable)
+              .set({ status: "qr_ready", qrCode: qrBase64, updatedAt: new Date() })
+              .where(eq(whatsappSessionsTable.userId, userId));
+          } catch (err) {
+            console.error(`[WA] QR generation failed for user ${userId}:`, err);
+          }
+        }
+
+        if (connection === "close") {
+          clearHealthTimer(userId);
+          const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+          console.log(`[WA] Connection closed for user ${userId}, statusCode=${statusCode}`);
+          const loggedOut = statusCode === DisconnectReason.loggedOut
+            || statusCode === DisconnectReason.multideviceMismatch
+            || statusCode === 440;
+          const shouldReconnect = !loggedOut && state.retryCount < 3;
+
+          if (loggedOut) {
+            console.log(`[WA] Logged out for user ${userId}, clearing creds for fresh QR`);
+            state.retryCount = 0;
+            state.status = "connecting";
+            state.socket = null;
+            state.qrBase64 = null;
+            state.phoneNumber = null;
+            try { await execAsync(`rm -rf "${authDir}"`); } catch {}
+            await mkdir(authDir, { recursive: true });
+            await createSocket(userId, state, authDir);
+          } else if (shouldReconnect) {
+            state.retryCount++;
+            state.status = "connecting";
+            state.phoneNumber = null;
+            await createSocket(userId, state, authDir);
+          } else {
+            state.status = "disconnected";
+            state.socket = null;
+            state.qrBase64 = null;
+            state.phoneNumber = null;
+            await db.update(whatsappSessionsTable)
+              .set({ status: "disconnected", phoneNumber: null, sessionData: null, qrCode: null, lastDisconnect: new Date(), updatedAt: new Date() })
+              .where(eq(whatsappSessionsTable.userId, userId));
+          }
+        }
+
+        if (connection === "open") {
+          const phone = sock.user?.id?.split(":")[0] ?? null;
+          state.status = "connected";
+          state.phoneNumber = phone;
+          state.qrBase64 = null;
+          state.retryCount = 0;
+          startHealthCheck(userId, state);
+          await db.update(whatsappSessionsTable)
+            .set({ status: "connected", phoneNumber: phone ? `+${phone}` : null, qrCode: null, lastConnected: new Date(), updatedAt: new Date() })
+            .where(eq(whatsappSessionsTable.userId, userId));
+        }
       } catch (err) {
-        console.error(`[WA] QR generation failed for user ${userId}:`, err);
+        console.error(`[WA] connection.update handler error for user ${userId}:`, err);
       }
-    }
-
-    if (connection === "close") {
-      clearHealthTimer(userId);
-      const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-      console.log(`[WA] Connection closed for user ${userId}, statusCode=${statusCode}`);
-      const loggedOut = statusCode === DisconnectReason.loggedOut
-        || statusCode === DisconnectReason.multideviceMismatch
-        || statusCode === 440;
-      const shouldReconnect = !loggedOut && state.retryCount < 3;
-
-      if (loggedOut) {
-        // Stale / rejected credentials — wipe them and restart to get a fresh QR
-        console.log(`[WA] Logged out for user ${userId}, clearing creds and restarting for fresh QR`);
-        state.retryCount = 0;
-        state.status = "connecting";
-        state.socket = null;
-        state.qrBase64 = null;
-        state.phoneNumber = null;
-        await rm(authDir, { recursive: true, force: true });
-        await mkdir(authDir, { recursive: true });
-        await createSocket(userId, state, authDir);
-      } else if (shouldReconnect) {
-        state.retryCount++;
-        state.status = "connecting";
-        state.phoneNumber = null;
-        await createSocket(userId, state, authDir);
-      } else {
-        state.status = "disconnected";
-        state.socket = null;
-        state.qrBase64 = null;
-        state.phoneNumber = null;
-        await db.update(whatsappSessionsTable)
-          .set({ status: "disconnected", phoneNumber: null, sessionData: null, qrCode: null, lastDisconnect: new Date(), updatedAt: new Date() })
-          .where(eq(whatsappSessionsTable.userId, userId));
-      }
-    }
-
-    if (connection === "open") {
-      const phone = sock.user?.id?.split(":")[0] ?? null;
-      state.status = "connected";
-      state.phoneNumber = phone;
-      state.qrBase64 = null;
-      state.retryCount = 0;
-      startHealthCheck(userId, state);
-      await db.update(whatsappSessionsTable)
-        .set({ status: "connected", phoneNumber: phone ? `+${phone}` : null, qrCode: null, lastConnected: new Date(), updatedAt: new Date() })
-        .where(eq(whatsappSessionsTable.userId, userId));
-    }
+    })();
   });
 
   sock.ev.on("messages.upsert", async ({ messages, type }) => {
@@ -381,7 +390,9 @@ async function createSocket(userId: string, state: SessionState, authDir: string
 
       if (!incomingText) continue;
 
-      const customerPhone = remoteJid.split("@")[0];
+      // Format phone number with + prefix (WhatsApp JID gives raw digits e.g. 919876543210)
+      const rawPhone = remoteJid.split("@")[0];
+      const customerPhone = rawPhone.startsWith("+") ? rawPhone : `+${rawPhone}`;
       const pushName = msg.pushName ?? null;
 
       // Fire-and-forget read receipt — don't block AI reply
