@@ -72,9 +72,7 @@ export default function Register() {
             style={{ background: "linear-gradient(135deg, #075E54 0%, #25D366 100%)" }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="bg-white rounded-2xl p-2.5 shadow-xl shrink-0">
-                <img src="/icon.png" alt="WhatsBiz AI" className="h-12 w-12 object-contain" />
-              </div>
+              <img src="/icon.png" alt="WhatsBiz AI" className="h-14 w-14 object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)] shrink-0" />
               <div className="text-left">
                 <p className="text-white font-extrabold text-xl leading-tight tracking-tight">
                   WhatsBiz <span className="text-emerald-300">AI</span>

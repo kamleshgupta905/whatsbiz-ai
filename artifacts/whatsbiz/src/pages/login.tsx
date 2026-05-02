@@ -68,10 +68,8 @@ export default function Login() {
         <div className="absolute top-1/2 left-1/3 w-40 h-40 rounded-full bg-emerald-300/10 blur-xl" />
 
         {/* Logo — icon + brand name */}
-        <div className="relative flex items-center gap-4">
-          <div className="bg-white rounded-2xl p-3 shadow-2xl shrink-0">
-            <img src="/icon.png" alt="WhatsBiz AI" className="h-14 w-14 object-contain" />
-          </div>
+        <div className="relative flex items-center gap-3">
+          <img src="/icon.png" alt="WhatsBiz AI" className="h-16 w-16 object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)]" />
           <div>
             <p className="text-white font-extrabold text-2xl leading-tight tracking-tight">WhatsBiz <span className="text-emerald-300">AI</span></p>
             <p className="text-emerald-200 text-sm font-medium mt-0.5">Automate. Engage. Grow.</p>
@@ -131,9 +129,7 @@ export default function Login() {
           className="lg:hidden flex items-center justify-center gap-4 py-8 px-6"
           style={{ background: "linear-gradient(145deg, #075E54 0%, #128C7E 45%, #25D366 100%)" }}
         >
-          <div className="bg-white rounded-2xl p-3 shadow-2xl shrink-0">
-            <img src="/icon.png" alt="WhatsBiz AI" className="h-14 w-14 sm:h-16 sm:w-16 object-contain" />
-          </div>
+          <img src="/icon.png" alt="WhatsBiz AI" className="h-16 w-16 sm:h-20 sm:w-20 object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.45)] shrink-0" />
           <div>
             <p className="text-white font-extrabold text-2xl sm:text-3xl leading-tight tracking-tight">
               WhatsBiz <span className="text-emerald-300">AI</span>
