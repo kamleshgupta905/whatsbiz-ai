@@ -69,7 +69,7 @@ export default function Login() {
 
         {/* Logo — icon + brand name */}
         <div className="relative flex items-center gap-3">
-          <img src="/icon.png" alt="WhatsBiz AI" className="h-20 w-20 object-contain" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(10deg) drop-shadow(0 2px 10px rgba(0,0,0,0.35))" }} />
+          <img src="/icon.png" alt="WhatsBiz AI" className="h-28 w-28 object-contain" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(10deg) drop-shadow(0 3px 14px rgba(0,0,0,0.4))" }} />
           <div>
             <p className="text-white font-extrabold text-2xl leading-tight tracking-tight">WhatsBiz <span className="text-emerald-300">AI</span></p>
             <p className="text-emerald-200 text-sm font-medium mt-0.5">Automate. Engage. Grow.</p>
@@ -129,7 +129,7 @@ export default function Login() {
           className="lg:hidden flex items-center justify-center gap-4 py-8 px-6"
           style={{ background: "linear-gradient(145deg, #075E54 0%, #128C7E 45%, #25D366 100%)" }}
         >
-          <img src="/icon.png" alt="WhatsBiz AI" className="h-20 w-20 sm:h-24 sm:w-24 object-contain shrink-0" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(10deg) drop-shadow(0 2px 12px rgba(0,0,0,0.35))" }} />
+          <img src="/icon.png" alt="WhatsBiz AI" className="h-24 w-24 sm:h-28 sm:w-28 object-contain shrink-0" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(10deg) drop-shadow(0 3px 14px rgba(0,0,0,0.4))" }} />
           <div>
             <p className="text-white font-extrabold text-2xl sm:text-3xl leading-tight tracking-tight">
               WhatsBiz <span className="text-emerald-300">AI</span>
