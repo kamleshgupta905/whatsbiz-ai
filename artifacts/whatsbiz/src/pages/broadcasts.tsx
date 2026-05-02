@@ -2,7 +2,10 @@ import { useState } from "react";
 import { useListBroadcasts } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Megaphone, Plus, Clock, Users, CheckCircle2, Send, Loader2, AlertCircle } from "lucide-react";
+import {
+  Megaphone, Plus, Clock, Users, CheckCircle2, Send,
+  Loader2, AlertCircle, ShieldCheck, Timer, Layers
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -34,6 +37,18 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
   failed:    { label: "Failed",    variant: "destructive" },
 };
 
+// Estimate how long a broadcast will take
+function estimateTime(count: number): string {
+  const safeCount = Math.min(count, 200);
+  const batches = Math.ceil(safeCount / 20);
+  const msgDelayAvg = 14; // avg of 8–20s
+  const batchPauseAvg = 4 * 60; // avg of 3–5 min in seconds
+  const totalSecs = safeCount * msgDelayAvg + (batches - 1) * batchPauseAvg;
+  if (totalSecs < 60) return `~${totalSecs}s`;
+  if (totalSecs < 3600) return `~${Math.round(totalSecs / 60)} min`;
+  return `~${(totalSecs / 3600).toFixed(1)} hrs`;
+}
+
 export default function Broadcasts() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -48,6 +63,9 @@ export default function Broadcasts() {
   const [sendingId, setSendingId] = useState<string | null>(null);
 
   const resetForm = () => { setName(""); setMessage(""); setRecipientType("all"); setPhones(""); };
+
+  const phoneCount = phones.split("\n").map(p => p.trim()).filter(Boolean).length;
+  const estimatedRecipients = recipientType === "custom" ? phoneCount : undefined;
 
   const handleCreate = async () => {
     if (!name.trim() || !message.trim()) {
@@ -72,12 +90,16 @@ export default function Broadcasts() {
     }
   };
 
-  const handleSend = async (id: string) => {
+  const handleSend = async (id: string, recipientCount: number) => {
     setSendingId(id);
     try {
       await apiPost(`/api/broadcasts/${id}/send`);
       await queryClient.invalidateQueries({ queryKey: ["broadcasts"] });
-      toast({ title: "Broadcast sending!", description: "Messages are being sent via WhatsApp." });
+      toast({
+        title: "Broadcast started!",
+        description: `Sending to ${Math.min(recipientCount, 200)} contacts. ${estimateTime(recipientCount)} estimated — do not close the app.`,
+        duration: 8000,
+      });
     } catch (e) {
       toast({ variant: "destructive", title: "Send failed", description: (e as Error).message });
     } finally {
@@ -100,6 +122,44 @@ export default function Broadcasts() {
         </Button>
       </div>
 
+      {/* ── Safety Info Banner ── */}
+      <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <ShieldCheck className="w-5 h-5 text-green-600 shrink-0" />
+          <span className="font-semibold text-green-800 text-sm">WhatsApp Ban Protection — Auto-enabled</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
+              <Timer className="w-3.5 h-3.5 text-green-700" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-green-900">8–20 sec delay</p>
+              <p className="text-xs text-green-700">Random gap between each message — human-like sending pattern</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
+              <Layers className="w-3.5 h-3.5 text-green-700" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-green-900">Batches of 20</p>
+              <p className="text-xs text-green-700">3–5 min cooldown after every 20 messages to avoid detection</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-green-700" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-green-900">Max 200/broadcast</p>
+              <p className="text-xs text-green-700">Daily safe limit for personal WhatsApp — splits into safe batches automatically</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6 flex items-center gap-4">
@@ -136,6 +196,7 @@ export default function Broadcasts() {
         </Card>
       </div>
 
+      {/* Campaign list */}
       <Card>
         <CardHeader>
           <CardTitle>Campaign History</CardTitle>
@@ -155,6 +216,7 @@ export default function Broadcasts() {
               {data.broadcasts.map((b) => {
                 const badge = STATUS_BADGE[b.status] ?? { label: b.status, variant: "secondary" as const };
                 const isSending = sendingId === b.id || b.status === "sending";
+                const cappedCount = Math.min(b.recipientCount, 200);
                 return (
                   <div key={b.id} className="p-4 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -164,13 +226,29 @@ export default function Broadcasts() {
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-1 mb-2">{b.message}</p>
                       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(b.createdAt).toLocaleDateString("en-IN")}</span>
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" />{b.recipientCount} recipients</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />{new Date(b.createdAt).toLocaleDateString("en-IN")}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />{cappedCount} recipients
+                          {b.recipientCount > 200 && (
+                            <span className="text-amber-600 ml-1">(capped at 200 for safety)</span>
+                          )}
+                        </span>
+                        {b.status === "draft" && cappedCount > 0 && (
+                          <span className="flex items-center gap-1 text-blue-600">
+                            <Timer className="w-3 h-3" /> Est. {estimateTime(cappedCount)}
+                          </span>
+                        )}
                         {b.deliveredCount > 0 && (
-                          <span className="flex items-center gap-1 text-green-600"><CheckCircle2 className="w-3 h-3" />{b.deliveredCount} delivered</span>
+                          <span className="flex items-center gap-1 text-green-600">
+                            <CheckCircle2 className="w-3 h-3" />{b.deliveredCount} delivered
+                          </span>
                         )}
                         {b.failedCount > 0 && (
-                          <span className="flex items-center gap-1 text-destructive"><AlertCircle className="w-3 h-3" />{b.failedCount} failed</span>
+                          <span className="flex items-center gap-1 text-destructive">
+                            <AlertCircle className="w-3 h-3" />{b.failedCount} failed
+                          </span>
                         )}
                       </div>
                     </div>
@@ -178,7 +256,7 @@ export default function Broadcasts() {
                       <Button
                         size="sm"
                         className="gap-2 shrink-0 w-full sm:w-auto"
-                        onClick={() => handleSend(b.id)}
+                        onClick={() => handleSend(b.id, b.recipientCount)}
                         disabled={isSending}
                       >
                         {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -193,6 +271,7 @@ export default function Broadcasts() {
         </CardContent>
       </Card>
 
+      {/* Create dialog */}
       <Dialog open={showCreate} onOpenChange={(o) => { if (!o) resetForm(); setShowCreate(o); }}>
         <DialogContent className="max-w-lg w-[95vw]">
           <DialogHeader>
@@ -245,6 +324,22 @@ export default function Broadcasts() {
                   onChange={(e) => setPhones(e.target.value)}
                   className="min-h-[100px] font-mono text-sm"
                 />
+                {phoneCount > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {phoneCount} numbers · Est. {estimateTime(phoneCount)}
+                    {phoneCount > 200 && <span className="text-amber-600 ml-1">— only first 200 will be sent</span>}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Time estimate notice */}
+            {estimatedRecipients !== undefined && estimatedRecipients > 0 && (
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 flex items-start gap-2">
+                <Timer className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-600" />
+                <span>
+                  Sending {Math.min(estimatedRecipients, 200)} messages will take approximately <strong>{estimateTime(estimatedRecipients)}</strong> due to safety delays. Keep the app open until complete.
+                </span>
               </div>
             )}
           </div>
