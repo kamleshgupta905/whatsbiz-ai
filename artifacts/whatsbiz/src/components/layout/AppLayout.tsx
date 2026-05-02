@@ -101,14 +101,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
+      {/* Hide the sidebar rail (white slider) */}
+      <style>{`[data-sidebar="rail"] { display: none !important; }`}</style>
+
       <div className="flex h-screen w-full bg-muted/20">
         <Sidebar className="border-r bg-sidebar border-sidebar-border">
-          <SidebarHeader className="px-4 py-4 border-b border-sidebar-border">
+
+          {/* Sidebar Header — bigger icon, orange/gold, like login page */}
+          <SidebarHeader className="px-4 py-5 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
               <img
                 src="/icon.png"
                 alt="WhatsBiz AI"
-                className="h-12 w-12 object-contain"
+                className="h-16 w-16 object-contain"
+                style={{ filter: "brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(10deg) drop-shadow(0 2px 8px rgba(0,0,0,0.15))" }}
               />
               <div>
                 <p className="font-extrabold text-base leading-tight tracking-tight">
@@ -157,43 +163,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-4">
-            {/* WhatsApp status */}
-            {waStatus && (
-              <div className={`mb-3 p-3 rounded-md border text-sm flex items-center gap-2 transition-colors ${
-                isConnected
-                  ? "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400"
-                  : "bg-destructive/10 border-destructive/20 text-destructive"
-              }`}>
-                {isConnected ? <Wifi className="w-4 h-4 shrink-0" /> : <WifiOff className="w-4 h-4 shrink-0" />}
-                <div className="flex flex-col min-w-0">
-                  <span className="font-semibold text-xs">
-                    {isConnected ? "WhatsApp Connected" : "WhatsApp Disconnected"}
-                  </span>
-                  {isConnected && waStatus.phoneNumber && (
-                    <span className="text-xs opacity-70 truncate">{waStatus.phoneNumber}</span>
-                  )}
-                </div>
-                {isConnected && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-auto shrink-0" />}
-              </div>
-            )}
-
-            {/* User info chip */}
-            {user && (
-              <div className="mb-2 px-3 py-2 rounded-md bg-muted/50 flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">{user.name}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
-                </div>
-                {isAdmin && (
-                  <Shield className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                )}
-              </div>
-            )}
-
+          {/* Sidebar Footer — logout only */}
+          <SidebarFooter className="p-4 border-t border-sidebar-border">
             <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
               <LogOut className="w-4 h-4" />
               <span>Logout</span>
@@ -202,19 +173,58 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </Sidebar>
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="h-14 border-b flex items-center px-3 bg-card md:hidden shrink-0">
+
+          {/* Desktop top bar — SidebarTrigger + WhatsApp status + user info */}
+          <header className="h-14 border-b hidden md:flex items-center px-4 bg-card shrink-0 gap-3">
             <SidebarTrigger className="shrink-0" />
-            <div className="flex items-center gap-2 ml-2 min-w-0">
-              <img
-                src="/icon.png"
-                alt=""
-                className="h-9 w-9 object-contain shrink-0"
-              />
-              <span className="font-extrabold truncate">
-                WhatsBiz <span className="text-primary">AI</span>
-              </span>
-            </div>
+            <div className="flex-1" />
+
+            {/* WhatsApp status chip */}
+            {waStatus && (
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                isConnected
+                  ? "bg-green-500/10 border-green-500/25 text-green-700"
+                  : "bg-red-500/10 border-red-400/25 text-red-600"
+              }`}>
+                {isConnected
+                  ? <Wifi className="w-3.5 h-3.5" />
+                  : <WifiOff className="w-3.5 h-3.5" />}
+                <span>{isConnected ? "WhatsApp Connected" : "Disconnected"}</span>
+                {isConnected && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse ml-1" />}
+              </div>
+            )}
+
+            {/* User chip */}
+            {user && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border text-xs">
+                <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-[11px] shrink-0">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="font-medium max-w-[120px] truncate">{user.name}</span>
+                {isAdmin && <Shield className="w-3 h-3 text-red-500 shrink-0" />}
+              </div>
+            )}
           </header>
+
+          {/* Mobile top bar */}
+          <header className="h-14 border-b flex items-center px-3 bg-card md:hidden shrink-0 gap-2">
+            <SidebarTrigger className="shrink-0" />
+            <img
+              src="/icon.png"
+              alt=""
+              className="h-9 w-9 object-contain shrink-0"
+              style={{ filter: "brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(10deg)" }}
+            />
+            <span className="font-extrabold truncate">
+              WhatsBiz <span className="text-primary">AI</span>
+            </span>
+            <div className="flex-1" />
+            {/* Mobile WhatsApp status dot */}
+            {waStatus && (
+              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
+            )}
+          </header>
+
           <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {children}
           </main>
