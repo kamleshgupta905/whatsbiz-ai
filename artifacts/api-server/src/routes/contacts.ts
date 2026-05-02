@@ -98,4 +98,20 @@ router.patch("/contacts/:id", requireAuth, async (req, res) => {
   res.json(formatContact(updated));
 });
 
+router.delete("/contacts/:id", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const { id } = req.params;
+
+  const [deleted] = await db.delete(contactsTable)
+    .where(and(eq(contactsTable.id, id), eq(contactsTable.userId, user.id)))
+    .returning();
+
+  if (!deleted) {
+    res.status(404).json({ error: "Contact not found" });
+    return;
+  }
+
+  res.json({ success: true });
+});
+
 export default router;
