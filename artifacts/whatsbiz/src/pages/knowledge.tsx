@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGetKnowledgeBase, useUpdateKnowledgeBase, useTestAI } from "@workspace/api-client-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,20 +6,52 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Bot, Sparkles, Send } from "lucide-react";
+import { Save, Bot, Sparkles, Send, Globe, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQueryClient } from "@tanstack/react-query";
+
+async function scrapeWebsite(url: string): Promise<{ success: boolean; extractedContent?: string; error?: string }> {
+  const token = localStorage.getItem("token");
+  const res = await fetch("/api/knowledge/scrape-website", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ url }),
+  });
+  return res.json();
+}
+
+async function generatePrompt(): Promise<{ prompt: string; version: number }> {
+  const token = localStorage.getItem("token");
+  const res = await fetch("/api/knowledge/generate-prompt", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
 
 export default function KnowledgeBase() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: kb, isLoading } = useGetKnowledgeBase({ query: { queryKey: ["knowledge"] } });
   const updateKbMutation = useUpdateKnowledgeBase();
   const testAIMutation = useTestAI();
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const [rawContent, setRawContent] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [testMessage, setTestMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState<{role: string, content: string}[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ role: string; content: string }[]>([]);
+
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeStatus, setScrapeStatus] = useState<"idle" | "success" | "error">("idle");
+  const [scrapeMsg, setScrapeMsg] = useState("");
+
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     if (kb) {
@@ -28,104 +60,196 @@ export default function KnowledgeBase() {
     }
   }, [kb]);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
+
   const handleSave = () => {
-    updateKbMutation.mutate({
-      data: { rawContent, systemPrompt }
-    }, {
-      onSuccess: () => {
-        toast({ title: "Knowledge base updated", description: "Your AI is now smarter." });
+    updateKbMutation.mutate(
+      { data: { rawContent, systemPrompt } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["knowledge"] });
+          toast({ title: "Saved!", description: "AI ab naya knowledge use karega." });
+        },
       }
-    });
+    );
+  };
+
+  const handleScrape = async () => {
+    if (!websiteUrl.trim()) return;
+    setIsScraping(true);
+    setScrapeStatus("idle");
+    setScrapeMsg("");
+
+    const result = await scrapeWebsite(websiteUrl.trim());
+    setIsScraping(false);
+
+    if (result.success && result.extractedContent) {
+      setScrapeStatus("success");
+      setScrapeMsg("Website ka content successfully extract ho gaya aur Knowledge Base mein save ho gaya!");
+      setRawContent(prev => {
+        const sep = prev ? `\n\n--- Website: ${websiteUrl.trim()} ---\n` : `--- Website: ${websiteUrl.trim()} ---\n`;
+        return prev + sep + result.extractedContent;
+      });
+      setWebsiteUrl("");
+      queryClient.invalidateQueries({ queryKey: ["knowledge"] });
+    } else {
+      setScrapeStatus("error");
+      setScrapeMsg(result.error ?? "Website se content extract nahi ho paya.");
+    }
+  };
+
+  const handleAutoGeneratePrompt = async () => {
+    setIsGenerating(true);
+    const result = await generatePrompt();
+    setIsGenerating(false);
+    if (result.prompt) {
+      setSystemPrompt(result.prompt);
+      toast({ title: "System Prompt Generate Ho Gaya!", description: `Version ${result.version} create hua.` });
+    }
   };
 
   const handleTestSend = () => {
     if (!testMessage.trim()) return;
-    
     const newHistory = [...chatHistory, { role: "user", content: testMessage }];
     setChatHistory(newHistory);
     setTestMessage("");
 
-    testAIMutation.mutate({
-      data: { message: testMessage, history: newHistory.map(h => ({ role: h.role, content: h.content })) }
-    }, {
-      onSuccess: (res) => {
-        setChatHistory([...newHistory, { role: "assistant", content: res.reply }]);
+    testAIMutation.mutate(
+      { data: { message: testMessage, history: newHistory.map(h => ({ role: h.role, content: h.content })) } },
+      {
+        onSuccess: (res) => {
+          setChatHistory([...newHistory, { role: "assistant", content: res.reply }]);
+        },
       }
-    });
+    );
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="h-64 flex items-center justify-center text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Knowledge Base</h1>
-          <p className="text-muted-foreground">Train your WhatsApp AI.</p>
+          <p className="text-muted-foreground">Apne WhatsApp AI ko train karo.</p>
         </div>
         <Button onClick={handleSave} disabled={updateKbMutation.isPending} className="gap-2">
-          <Save className="w-4 h-4" /> Save Changes
+          {updateKbMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Save Changes
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="col-span-1 lg:col-span-2">
-          <Tabs defaultValue="raw">
+        <div className="col-span-1 lg:col-span-2 space-y-4">
+
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Globe className="w-4 h-4 text-primary" />
+                Website se Import karo
+              </CardTitle>
+              <CardDescription>
+                Apni website ka URL do — AI saari information automatically extract karke Knowledge Base mein save kar dega.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  value={websiteUrl}
+                  onChange={(e) => { setWebsiteUrl(e.target.value); setScrapeStatus("idle"); }}
+                  placeholder="https://yourwebsite.com"
+                  disabled={isScraping}
+                  onKeyDown={(e) => e.key === "Enter" && !isScraping && handleScrape()}
+                  className="flex-1"
+                />
+                <Button onClick={handleScrape} disabled={isScraping || !websiteUrl.trim()} className="gap-2 min-w-[120px]">
+                  {isScraping ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Extracting...</>
+                  ) : (
+                    <><Globe className="w-4 h-4" /> Import karo</>
+                  )}
+                </Button>
+              </div>
+
+              {scrapeStatus === "success" && (
+                <div className="flex items-start gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                  <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>{scrapeMsg}</span>
+                </div>
+              )}
+              {scrapeStatus === "error" && (
+                <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>{scrapeMsg}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Tabs defaultValue="prompt">
             <TabsList className="mb-4">
-              <TabsTrigger value="raw">Raw Data / FAQs</TabsTrigger>
               <TabsTrigger value="prompt">System Prompt</TabsTrigger>
-              <TabsTrigger value="settings">Tone & Personality</TabsTrigger>
+              <TabsTrigger value="raw">Business Info / Raw Data</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="raw">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Raw Business Data</CardTitle>
-                  <CardDescription>Paste menus, price lists, FAQs, or any info the AI should know.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Textarea 
-                    value={rawContent}
-                    onChange={(e) => setRawContent(e.target.value)}
-                    className="min-h-[400px] font-mono text-sm"
-                    placeholder="We are open Mon-Fri 9am-6pm. Return policy is 7 days..."
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="prompt">
               <Card>
                 <CardHeader>
-                  <CardTitle>System Prompt (Advanced)</CardTitle>
-                  <CardDescription>The core instructions that govern how the AI behaves.</CardDescription>
+                  <CardTitle>System Prompt</CardTitle>
+                  <CardDescription>
+                    AI isi prompt ke hisaab se reply karega. Bas yeh likhdo — FAQ ki zaroorat nahi.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Textarea 
+                <CardContent className="space-y-4">
+                  <Textarea
                     value={systemPrompt}
                     onChange={(e) => setSystemPrompt(e.target.value)}
-                    className="min-h-[400px] font-mono text-sm bg-muted/50 border-primary/20 focus-visible:ring-primary"
+                    className="min-h-[320px] font-mono text-sm"
+                    placeholder={`Example:\nTum ${kb ? "ek business" : "meri business"} ke WhatsApp assistant ho. Customer ke sawal ka jawab Hindi ya English mein do. Prices clearly batao. Agar kuch pata nahi to boldo "hum aapko call karenge".`}
                   />
-                  <div className="mt-4 flex justify-end">
-                    <Button variant="outline" className="gap-2 text-primary border-primary hover:bg-primary/10">
-                      <Sparkles className="w-4 h-4" /> Auto-generate Prompt
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-muted-foreground">
+                      {systemPrompt.length} characters · Version {kb?.promptVersion ?? 1}
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="gap-2 text-primary border-primary hover:bg-primary/10"
+                      onClick={handleAutoGeneratePrompt}
+                      disabled={isGenerating}
+                    >
+                      {isGenerating
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
+                        : <><Sparkles className="w-4 h-4" /> Auto-generate</>
+                      }
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-            
-            <TabsContent value="settings">
+
+            <TabsContent value="raw">
               <Card>
-                <CardContent className="pt-6 space-y-4">
-                  <div className="space-y-2">
-                    <Label>AI Tone</Label>
-                    <Input value={kb?.tone || "friendly"} disabled />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Personality</Label>
-                    <Input value={kb?.personality || "helpful assistant"} disabled />
-                  </div>
+                <CardHeader>
+                  <CardTitle>Business Information</CardTitle>
+                  <CardDescription>
+                    Menu, price list, policies, working hours — jo bhi AI ko pata hona chahiye. Website import ke baad yahan dikhega.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={rawContent}
+                    onChange={(e) => setRawContent(e.target.value)}
+                    className="min-h-[380px] font-mono text-sm"
+                    placeholder="Hum Mon-Sat 9am-7pm open hain. Return policy 7 din hai. Delivery free hai 500 se upar ke order pe..."
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -133,51 +257,61 @@ export default function KnowledgeBase() {
         </div>
 
         <div className="col-span-1">
-          <Card className="h-[600px] flex flex-col">
+          <Card className="h-[600px] flex flex-col sticky top-4">
             <CardHeader className="pb-3 border-b bg-muted/30">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Bot className="w-5 h-5 text-primary" /> Test Playground
               </CardTitle>
-              <CardDescription>Test how the AI will reply to customers.</CardDescription>
+              <CardDescription>
+                Save karne ke baad test karo ki AI kaise reply karega.
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-              <ScrollArea className="flex-1 p-4 bg-muted/10">
-                <div className="space-y-4">
+              <ScrollArea className="flex-1 p-4">
+                <div className="space-y-3">
                   {chatHistory.length === 0 && (
-                    <div className="text-center text-sm text-muted-foreground py-8">
-                      Send a message to test the AI. It uses the saved knowledge base.
+                    <div className="text-center text-sm text-muted-foreground py-10 space-y-2">
+                      <Bot className="w-8 h-8 mx-auto text-muted-foreground/40" />
+                      <p>Koi bhi message bhejo aur dekho AI kya reply karega.</p>
                     </div>
                   )}
                   {chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                      <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${
-                        msg.role === 'user' 
-                          ? 'bg-primary text-primary-foreground rounded-tr-none' 
-                          : 'bg-card border shadow-sm rounded-tl-none'
-                      }`}>
+                    <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <div
+                        className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
+                          msg.role === "user"
+                            ? "bg-primary text-primary-foreground rounded-tr-sm"
+                            : "bg-card border shadow-sm rounded-tl-sm"
+                        }`}
+                      >
                         {msg.content}
                       </div>
                     </div>
                   ))}
                   {testAIMutation.isPending && (
-                    <div className="flex flex-col items-start">
-                      <div className="max-w-[85%] p-3 rounded-2xl text-sm bg-card border shadow-sm rounded-tl-none flex gap-1">
+                    <div className="flex justify-start">
+                      <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-card border shadow-sm flex gap-1 items-center">
                         <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" />
                         <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0.2s]" />
                         <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0.4s]" />
                       </div>
                     </div>
                   )}
+                  <div ref={chatEndRef} />
                 </div>
               </ScrollArea>
               <div className="p-3 border-t bg-card flex gap-2">
-                <Input 
+                <Input
                   value={testMessage}
                   onChange={(e) => setTestMessage(e.target.value)}
-                  placeholder="Ask a question..."
-                  onKeyDown={(e) => e.key === 'Enter' && handleTestSend()}
+                  placeholder="Koi bhi sawaal pucho..."
+                  onKeyDown={(e) => e.key === "Enter" && handleTestSend()}
                 />
-                <Button onClick={handleTestSend} size="icon" disabled={testAIMutation.isPending || !testMessage.trim()}>
+                <Button
+                  onClick={handleTestSend}
+                  size="icon"
+                  disabled={testAIMutation.isPending || !testMessage.trim()}
+                >
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
