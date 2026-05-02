@@ -5,24 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Save, Bot, Sparkles, Send, Globe, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Save, Bot, Sparkles, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQueryClient } from "@tanstack/react-query";
-
-async function scrapeWebsite(url: string): Promise<{ success: boolean; extractedContent?: string; error?: string }> {
-  const token = localStorage.getItem("token");
-  const res = await fetch("/api/knowledge/scrape-website", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ url }),
-  });
-  return res.json();
-}
 
 async function generatePrompt(): Promise<{ prompt: string; version: number }> {
   const token = localStorage.getItem("token");
@@ -45,11 +31,6 @@ export default function KnowledgeBase() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [testMessage, setTestMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<{ role: string; content: string }[]>([]);
-
-  const [websiteUrl, setWebsiteUrl] = useState("");
-  const [isScraping, setIsScraping] = useState(false);
-  const [scrapeStatus, setScrapeStatus] = useState<"idle" | "success" | "error">("idle");
-  const [scrapeMsg, setScrapeMsg] = useState("");
 
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -149,50 +130,6 @@ export default function KnowledgeBase() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="col-span-1 lg:col-span-2 space-y-4">
-
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Globe className="w-4 h-4 text-primary" />
-                Website se Import karo
-              </CardTitle>
-              <CardDescription>
-                Apni website ka URL do — AI saari information automatically extract karke Knowledge Base mein save kar dega.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  value={websiteUrl}
-                  onChange={(e) => { setWebsiteUrl(e.target.value); setScrapeStatus("idle"); }}
-                  placeholder="https://yourwebsite.com"
-                  disabled={isScraping}
-                  onKeyDown={(e) => e.key === "Enter" && !isScraping && handleScrape()}
-                  className="flex-1"
-                />
-                <Button onClick={handleScrape} disabled={isScraping || !websiteUrl.trim()} className="gap-2 min-w-[120px]">
-                  {isScraping ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Extracting...</>
-                  ) : (
-                    <><Globe className="w-4 h-4" /> Import karo</>
-                  )}
-                </Button>
-              </div>
-
-              {scrapeStatus === "success" && (
-                <div className="flex items-start gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
-                  <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{scrapeMsg}</span>
-                </div>
-              )}
-              {scrapeStatus === "error" && (
-                <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
-                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{scrapeMsg}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           <Tabs defaultValue="prompt">
             <TabsList className="mb-4">

@@ -418,6 +418,35 @@ export function updateAIEnabled(userId: string, enabled: boolean): void {
   if (state) state.isAIEnabled = enabled;
 }
 
+export async function sendBroadcastMessages(
+  userId: string,
+  phones: string[],
+  message: string,
+  onProgress?: (sent: number, failed: number) => void
+): Promise<{ sent: number; failed: number }> {
+  const state = sessions.get(userId);
+  if (!state?.socket || state.status !== "connected") {
+    throw new Error("WhatsApp not connected");
+  }
+  const sock = state.socket;
+  let sent = 0;
+  let failed = 0;
+
+  for (const phone of phones) {
+    try {
+      const jid = phone.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
+      await sock.sendMessage(jid, { text: message });
+      sent++;
+    } catch {
+      failed++;
+    }
+    // Small delay to avoid rate-limit
+    await new Promise((r) => setTimeout(r, 500));
+    onProgress?.(sent, failed);
+  }
+  return { sent, failed };
+}
+
 export async function disconnectSession(userId: string): Promise<void> {
   clearHealthTimer(userId);
   const session = sessions.get(userId);
