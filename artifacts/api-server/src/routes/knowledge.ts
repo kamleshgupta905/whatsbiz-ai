@@ -3,6 +3,7 @@ import { db, knowledgeBaseTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpdateKnowledgeBaseBody, TestAIBody } from "@workspace/api-zod";
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
+import { invalidateKBCache } from "../lib/whatsapp-manager.js";
 import * as cheerio from "cheerio";
 import OpenAI from "openai";
 
@@ -54,6 +55,8 @@ router.put("/knowledge", requireAuth, async (req, res) => {
     .set(updateData)
     .where(eq(knowledgeBaseTable.userId, user.id))
     .returning();
+
+  invalidateKBCache(user.id);
 
   res.json({
     id: updated.id,
@@ -152,6 +155,8 @@ router.post("/knowledge/scrape-website", requireAuth, async (req, res) => {
       .set({ rawContent: newRawContent, updatedAt: new Date() })
       .where(eq(knowledgeBaseTable.userId, user.id));
 
+    invalidateKBCache(user.id);
+
     res.json({ success: true, extractedContent: extractedInfo, url: normalizedUrl });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Website fetch nahi ho payi";
@@ -179,6 +184,8 @@ Always respond in the language the customer uses. Be concise and helpful. Do not
   await db.update(knowledgeBaseTable)
     .set({ systemPrompt: prompt, promptVersion: newVersion, updatedAt: new Date() })
     .where(eq(knowledgeBaseTable.userId, user.id));
+
+  invalidateKBCache(user.id);
 
   res.json({ prompt, version: newVersion });
 });

@@ -3,7 +3,7 @@ import { db, whatsappSessionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpdateWhatsappSettingsBody } from "@workspace/api-zod";
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
-import { startSession, disconnectSession, getSession } from "../lib/whatsapp-manager.js";
+import { startSession, disconnectSession, getSession, updateAIEnabled } from "../lib/whatsapp-manager.js";
 
 const router = Router();
 
@@ -78,6 +78,11 @@ router.put("/whatsapp/settings", requireAuth, async (req, res) => {
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(whatsappSessionsTable.userId, user.id))
     .returning();
+
+  // Sync in-memory AI flag immediately — no restart needed
+  if (parsed.data.isAIEnabled !== undefined) {
+    updateAIEnabled(user.id, updated.isAIEnabled);
+  }
 
   res.json({
     status: updated.status,

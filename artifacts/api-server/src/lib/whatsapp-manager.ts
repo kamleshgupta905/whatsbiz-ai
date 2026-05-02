@@ -27,10 +27,18 @@ interface SessionState {
   status: "connecting" | "qr_ready" | "connected" | "disconnected";
   phoneNumber: string | null;
   retryCount: number;
+  isAIEnabled: boolean;
+}
+
+interface KBCache {
+  systemPrompt: string;
+  cachedAt: number;
 }
 
 const sessions = new Map<string, SessionState>();
 const healthTimers = new Map<string, ReturnType<typeof setInterval>>();
+const kbCache = new Map<string, KBCache>();
+const KB_TTL_MS = 120_000; // 2 minutes
 
 function getAuthDir(userId: string): string {
   return join("/tmp", "wa-auth", userId);
@@ -91,49 +99,66 @@ export async function startSession(userId: string): Promise<void> {
   const authDir = getAuthDir(userId);
   await mkdir(authDir, { recursive: true });
 
+  // Load AI-enabled flag from DB once; cached in memory thereafter
+  const [dbSession] = await db.select({ isAIEnabled: whatsappSessionsTable.isAIEnabled })
+    .from(whatsappSessionsTable).where(eq(whatsappSessionsTable.userId, userId));
+
   const state: SessionState = {
     socket: null,
     qrBase64: null,
     status: "connecting",
     phoneNumber: null,
     retryCount: 0,
+    isAIEnabled: dbSession?.isAIEnabled ?? false,
   };
   sessions.set(userId, state);
 
   await createSocket(userId, state, authDir);
 }
 
+async function getSystemPrompt(userId: string): Promise<string> {
+  const cached = kbCache.get(userId);
+  if (cached && Date.now() - cached.cachedAt < KB_TTL_MS) {
+    return cached.systemPrompt;
+  }
+
+  const [kb] = await db.select().from(knowledgeBaseTable).where(eq(knowledgeBaseTable.userId, userId));
+  let systemPrompt = kb?.systemPrompt ?? "You are a helpful WhatsApp business assistant. Reply in the same language the customer uses. Be concise and friendly.";
+
+  if (kb) {
+    const parts: string[] = [systemPrompt];
+    if (kb.rawContent) parts.push(`\n\nBusiness Info:\n${kb.rawContent}`);
+    if (kb.faqs && kb.faqs.length > 0) {
+      parts.push("\n\nFAQs:");
+      kb.faqs.forEach(f => parts.push(`Q: ${f.question}\nA: ${f.answer}`));
+    }
+    if (kb.products && kb.products.length > 0) {
+      parts.push("\n\nProducts/Services:");
+      kb.products.forEach(p => parts.push(`- ${p.name}: ₹${p.price} — ${p.description ?? ""} (${p.inStock ? "In Stock" : "Out of Stock"})`));
+    }
+    if (kb.businessHours) parts.push(`\n\nBusiness Hours: ${JSON.stringify(kb.businessHours)}`);
+    parts.push(`\n\nTone: ${kb.tone}. Personality: ${kb.personality}.`);
+    parts.push("\n\nAlways reply in the same language the customer is using. Keep replies short and helpful. Do NOT use markdown, just plain text.");
+    systemPrompt = parts.join("\n");
+  }
+
+  kbCache.set(userId, { systemPrompt, cachedAt: Date.now() });
+  return systemPrompt;
+}
+
+export function invalidateKBCache(userId: string): void {
+  kbCache.delete(userId);
+}
+
 async function generateAIReply(userId: string, customerPhone: string, incomingText: string): Promise<string | null> {
   try {
-    // Fetch KB and contact simultaneously
-    const [
-      [kb],
-      [contact],
-    ] = await Promise.all([
-      db.select().from(knowledgeBaseTable).where(eq(knowledgeBaseTable.userId, userId)),
+    // Fetch system prompt (cached) and contact history in parallel
+    const [systemPrompt, [contact]] = await Promise.all([
+      getSystemPrompt(userId),
       db.select().from(contactsTable).where(and(eq(contactsTable.userId, userId), eq(contactsTable.phone, customerPhone))),
     ]);
 
-    // Build system prompt
-    let systemPrompt = kb?.systemPrompt ?? "You are a helpful WhatsApp business assistant. Reply in the same language the customer uses. Be concise and friendly.";
-    if (kb) {
-      const parts: string[] = [systemPrompt];
-      if (kb.rawContent) parts.push(`\n\nBusiness Info:\n${kb.rawContent}`);
-      if (kb.faqs && kb.faqs.length > 0) {
-        parts.push("\n\nFAQs:");
-        kb.faqs.forEach(f => parts.push(`Q: ${f.question}\nA: ${f.answer}`));
-      }
-      if (kb.products && kb.products.length > 0) {
-        parts.push("\n\nProducts/Services:");
-        kb.products.forEach(p => parts.push(`- ${p.name}: ₹${p.price} — ${p.description ?? ""} (${p.inStock ? "In Stock" : "Out of Stock"})`));
-      }
-      if (kb.businessHours) parts.push(`\n\nBusiness Hours: ${JSON.stringify(kb.businessHours)}`);
-      parts.push(`\n\nTone: ${kb.tone}. Personality: ${kb.personality}.`);
-      parts.push("\n\nAlways reply in the same language the customer is using. Keep replies short and helpful. Do NOT use markdown, just plain text.");
-      systemPrompt = parts.join("\n");
-    }
-
-    // Fetch conversation history if contact exists
+    // Fetch last 4 messages for context (smaller = faster AI)
     const history: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
     if (contact) {
       const [conv] = await db.select().from(conversationsTable)
@@ -141,7 +166,7 @@ async function generateAIReply(userId: string, customerPhone: string, incomingTe
       if (conv) {
         const recent = await db.select().from(messagesTable)
           .where(eq(messagesTable.conversationId, conv.id));
-        recent.slice(-8).forEach(m => {
+        recent.slice(-4).forEach(m => {
           history.push({ role: m.sender === "CUSTOMER" ? "user" : "assistant", content: m.content });
         });
       }
@@ -149,7 +174,7 @@ async function generateAIReply(userId: string, customerPhone: string, incomingTe
 
     const response = await openai.chat.completions.create({
       model: "meta/llama-3.1-8b-instruct",
-      max_tokens: 400,
+      max_tokens: 150,
       messages: [
         { role: "system", content: systemPrompt },
         ...history,
@@ -328,12 +353,11 @@ async function createSocket(userId: string, state: SessionState, authDir: string
       const customerPhone = remoteJid.split("@")[0];
       const pushName = msg.pushName ?? null;
 
-      try {
-        await sock.readMessages([msg.key]);
-      } catch {}
+      // Fire-and-forget read receipt — don't block AI reply
+      sock.readMessages([msg.key]).catch(() => {});
 
-      const [session] = await db.select().from(whatsappSessionsTable).where(eq(whatsappSessionsTable.userId, userId));
-      if (!session?.isAIEnabled) continue;
+      // Use in-memory flag — no DB round-trip per message
+      if (!state.isAIEnabled) continue;
 
       const aiReply = await generateAIReply(userId, customerPhone, incomingText);
       if (!aiReply) continue;
@@ -345,6 +369,11 @@ async function createSocket(userId: string, state: SessionState, authDir: string
       } catch {}
     }
   });
+}
+
+export function updateAIEnabled(userId: string, enabled: boolean): void {
+  const state = sessions.get(userId);
+  if (state) state.isAIEnabled = enabled;
 }
 
 export async function disconnectSession(userId: string): Promise<void> {
