@@ -14,19 +14,36 @@ router.post("/auth/register", async (req, res) => {
   }
   const { name, email, phone, businessName, password } = parsed.data;
 
-  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email));
-  if (existing.length > 0) {
-    res.status(400).json({ error: "User already exists", message: "Email is already registered" });
+  const [existingEmail] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  if (existingEmail) {
+    res.status(400).json({ error: "User already exists", message: "Yeh email already registered hai. Login karo." });
     return;
   }
 
-  const [user] = await db.insert(usersTable).values({
-    name,
-    email,
-    phone,
-    businessName,
-    passwordHash: hashPassword(password),
-  }).returning();
+  const [existingPhone] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+  if (existingPhone) {
+    res.status(400).json({ error: "Phone already exists", message: "Yeh WhatsApp number already registered hai. Doosra number use karo ya login karo." });
+    return;
+  }
+
+  let user: typeof usersTable.$inferSelect;
+  try {
+    [user] = await db.insert(usersTable).values({
+      name,
+      email,
+      phone,
+      businessName,
+      passwordHash: hashPassword(password),
+    }).returning();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("unique") || msg.includes("duplicate")) {
+      res.status(400).json({ error: "Already exists", message: "Email ya phone number already registered hai." });
+    } else {
+      res.status(500).json({ error: "Registration failed", message: "Kuch gadbad hui. Dobara try karo." });
+    }
+    return;
+  }
 
   // Create trial subscription (2 days)
   const trialEnd = new Date();
