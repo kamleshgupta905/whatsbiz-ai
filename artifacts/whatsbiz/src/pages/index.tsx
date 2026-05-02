@@ -6,9 +6,9 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
 
-      {/* Header — sticky, top 0 */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
-        <div className="container mx-auto px-4 py-1 flex items-center justify-between">
+      {/* Header */}
+      <header className="border-b bg-background">
+        <div className="container mx-auto px-4 flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-2xl text-primary">
             <img src="/icon.png" alt="WhatsBiz AI" className="h-28 w-28 object-contain" />
             <span>WhatsBiz AI</span>
