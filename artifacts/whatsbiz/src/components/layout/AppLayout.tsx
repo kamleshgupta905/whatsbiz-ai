@@ -106,7 +106,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <Sidebar className="border-r bg-sidebar border-sidebar-border">
           <SidebarHeader className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <WbLogo size={32} />
+              <WbLogo size={36} />
               <span className="font-bold text-lg tracking-tight">
                 WhatsBiz <span className="text-primary">AI</span>
               </span>

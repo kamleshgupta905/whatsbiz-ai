@@ -1,13 +1,16 @@
 <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#25D366"/>
-      <stop offset="100%" stop-color="#075E54"/>
+      <stop offset="0%"   stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#065f46"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="90" y1="34" x2="90" y2="124" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
     </linearGradient>
   </defs>
-  <rect width="180" height="180" rx="40" fill="url(#bg)"/>
-  <!-- Chat bubble -->
-  <path d="M28 42 C28 32 36 24 46 24 L134 24 C144 24 152 32 152 42 L152 108 C152 118 144 126 134 126 L112 126 L90 154 L68 126 L46 126 C36 126 28 118 28 108 Z" fill="white" opacity="0.95"/>
-  <!-- Lightning bolt (AI) -->
-  <path d="M103 54 L79 92 H97 L77 130 L121 82 H100 Z" fill="#25D366"/>
+  <rect width="180" height="180" rx="44" fill="url(#bg)"/>
+  <ellipse cx="90" cy="12" rx="60" ry="22" fill="white" opacity="0.14"/>
+  <path d="M26 44 Q26 22 48 22 L132 22 Q154 22 154 44 L154 108 Q154 130 132 130 L102 130 L90 154 L78 130 L48 130 Q26 130 26 108 Z" fill="white"/>
+  <path d="M100 36 L68 90 H93 L74 126 L116 72 H89 Z" fill="url(#bolt)"/>
 </svg>
