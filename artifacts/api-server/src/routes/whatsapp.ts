@@ -13,6 +13,10 @@ router.get("/whatsapp/status", requireAuth, async (req, res) => {
 
   const inMemory = getSession(user.id);
 
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+
   res.json({
     status: inMemory?.status ?? session?.status ?? "disconnected",
     phoneNumber: inMemory?.phoneNumber ?? session?.phoneNumber ?? null,

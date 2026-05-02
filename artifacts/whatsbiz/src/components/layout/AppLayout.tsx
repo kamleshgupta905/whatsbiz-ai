@@ -49,8 +49,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const { data: waStatus } = useGetWhatsappStatus({
     query: {
-      refetchInterval: 30_000,
+      refetchInterval: 10_000,
       refetchIntervalInBackground: true,
+      staleTime: 0,
+      gcTime: 0,
     },
   });
 
