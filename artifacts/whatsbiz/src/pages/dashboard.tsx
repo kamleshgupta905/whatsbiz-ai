@@ -25,6 +25,7 @@ async function fetchQR(): Promise<{ status: string; qrBase64: string | null }> {
   const token = localStorage.getItem("token");
   const res = await fetch("/api/whatsapp/qr", {
     headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
   });
   if (!res.ok) throw new Error("QR fetch failed");
   return res.json();
@@ -56,6 +57,8 @@ export default function Dashboard() {
     queryFn: fetchQR,
     enabled: showQRDialog && sessionStarted,
     refetchInterval: showQRDialog && sessionStarted && !qrConnected ? 3000 : false,
+    staleTime: 0,
+    gcTime: 0,
     retry: false,
   });
 

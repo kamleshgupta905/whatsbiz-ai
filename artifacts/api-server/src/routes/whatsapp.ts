@@ -36,6 +36,10 @@ router.get("/whatsapp/qr", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
   const session = getSession(user.id);
 
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+
   if (!session) {
     res.status(404).json({ error: "No active session. Call /connect first." });
     return;
