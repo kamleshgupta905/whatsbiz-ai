@@ -3,20 +3,42 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: WhatsBiz AI API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: business
+    description: Business profile
+  - name: knowledge
+    description: Knowledge base
+  - name: whatsapp
+    description: WhatsApp connection
+  - name: conversations
+    description: Conversations management
+  - name: contacts
+    description: CRM contacts
+  - name: broadcasts
+    description: Broadcast campaigns
+  - name: analytics
+    description: Analytics & dashboard
+  - name: billing
+    description: Subscription & billing
+  - name: notifications
+    description: Notifications
+  - name: ai
+    description: AI features
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +46,667 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ===================== AUTH =====================
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: OK
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ===================== BUSINESS =====================
+  /business/profile:
+    get:
+      operationId: getBusinessProfile
+      tags: [business]
+      summary: Get business profile
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessProfile"
+    put:
+      operationId: updateBusinessProfile
+      tags: [business]
+      summary: Update business profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBusinessProfileBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessProfile"
+
+  /business/onboarding:
+    post:
+      operationId: completeOnboarding
+      tags: [business]
+      summary: Complete onboarding step
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnboardingBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingResponse"
+
+  # ===================== KNOWLEDGE BASE =====================
+  /knowledge:
+    get:
+      operationId: getKnowledgeBase
+      tags: [knowledge]
+      summary: Get knowledge base
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeBase"
+    put:
+      operationId: updateKnowledgeBase
+      tags: [knowledge]
+      summary: Update knowledge base
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateKnowledgeBaseBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeBase"
+
+  /knowledge/generate-prompt:
+    post:
+      operationId: generatePrompt
+      tags: [knowledge]
+      summary: AI-generate system prompt from knowledge base
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratePromptResponse"
+
+  /knowledge/test-ai:
+    post:
+      operationId: testAI
+      tags: [knowledge]
+      summary: Test AI response in playground
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestAIBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestAIResponse"
+
+  # ===================== WHATSAPP =====================
+  /whatsapp/status:
+    get:
+      operationId: getWhatsappStatus
+      tags: [whatsapp]
+      summary: Get WhatsApp connection status
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsappStatus"
+
+  /whatsapp/connect:
+    post:
+      operationId: connectWhatsapp
+      tags: [whatsapp]
+      summary: Initiate WhatsApp connection (returns QR)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsappConnectResponse"
+
+  /whatsapp/disconnect:
+    post:
+      operationId: disconnectWhatsapp
+      tags: [whatsapp]
+      summary: Disconnect WhatsApp
+      responses:
+        "200":
+          description: OK
+
+  /whatsapp/settings:
+    put:
+      operationId: updateWhatsappSettings
+      tags: [whatsapp]
+      summary: Update WhatsApp settings (AI enabled, working hours, away message)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WhatsappSettingsBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsappStatus"
+
+  # ===================== CONVERSATIONS =====================
+  /conversations:
+    get:
+      operationId: listConversations
+      tags: [conversations]
+      summary: List conversations
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, pending, resolved, archived]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationListResponse"
+
+  /conversations/{id}:
+    get:
+      operationId: getConversation
+      tags: [conversations]
+      summary: Get conversation with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationDetail"
+    patch:
+      operationId: updateConversation
+      tags: [conversations]
+      summary: Update conversation (status, tags, notes, AI toggle)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateConversationBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /conversations/{id}/messages:
+    post:
+      operationId: sendMessage
+      tags: [conversations]
+      summary: Send a message in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  # ===================== CONTACTS =====================
+  /contacts:
+    get:
+      operationId: listContacts
+      tags: [contacts]
+      summary: List CRM contacts
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactListResponse"
+    post:
+      operationId: createContact
+      tags: [contacts]
+      summary: Create a contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContactBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+
+  /contacts/{id}:
+    get:
+      operationId: getContact
+      tags: [contacts]
+      summary: Get contact detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+    patch:
+      operationId: updateContact
+      tags: [contacts]
+      summary: Update contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContactBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+
+  # ===================== BROADCASTS =====================
+  /broadcasts:
+    get:
+      operationId: listBroadcasts
+      tags: [broadcasts]
+      summary: List broadcast campaigns
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BroadcastListResponse"
+    post:
+      operationId: createBroadcast
+      tags: [broadcasts]
+      summary: Create a broadcast
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBroadcastBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Broadcast"
+
+  /broadcasts/{id}/send:
+    post:
+      operationId: sendBroadcast
+      tags: [broadcasts]
+      summary: Send / schedule a broadcast
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Broadcast"
+
+  # ===================== ANALYTICS =====================
+  /analytics/summary:
+    get:
+      operationId: getAnalyticsSummary
+      tags: [analytics]
+      summary: Get dashboard summary stats
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month]
+            default: month
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummary"
+
+  /analytics/messages-chart:
+    get:
+      operationId: getMessagesChart
+      tags: [analytics]
+      summary: Get messages over time for chart
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month]
+            default: month
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesChartResponse"
+
+  /analytics/top-questions:
+    get:
+      operationId: getTopQuestions
+      tags: [analytics]
+      summary: Get top customer questions
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopQuestionsResponse"
+
+  # ===================== BILLING =====================
+  /billing/subscription:
+    get:
+      operationId: getSubscription
+      tags: [billing]
+      summary: Get current subscription
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+
+  /billing/plans:
+    get:
+      operationId: listPlans
+      tags: [billing]
+      summary: List available plans
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlansResponse"
+
+  /billing/initiate-payment:
+    post:
+      operationId: initiatePayment
+      tags: [billing]
+      summary: Initiate UPI payment for a plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiatePaymentBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentInitResponse"
+
+  /billing/verify-payment:
+    post:
+      operationId: verifyPayment
+      tags: [billing]
+      summary: Submit UTR for manual payment verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyPaymentBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /billing/payments:
+    get:
+      operationId: listPayments
+      tags: [billing]
+      summary: List payment history
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentListResponse"
+
+  # ===================== NOTIFICATIONS =====================
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications
+      parameters:
+        - name: unread
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationListResponse"
+
+  /notifications/mark-read:
+    post:
+      operationId: markNotificationsRead
+      tags: [notifications]
+      summary: Mark notifications as read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkReadBody"
+      responses:
+        "200":
+          description: OK
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +714,856 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required: [error]
+
+    # ===================== AUTH =====================
+    RegisterBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        businessName:
+          type: string
+        password:
+          type: string
+          minLength: 6
+      required: [name, email, phone, businessName, password]
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required: [email, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required: [user, token]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        businessName:
+          type: string
+        businessType:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [CLIENT, ADMIN, SUPPORT]
+        language:
+          type: string
+        onboardingStep:
+          type: integer
+        isVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, email, phone, businessName, role, language, onboardingStep, isVerified, createdAt]
+
+    # ===================== BUSINESS =====================
+    BusinessProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        businessName:
+          type: string
+        businessType:
+          type: string
+          nullable: true
+        businessSize:
+          type: string
+          nullable: true
+        language:
+          type: string
+        onboardingStep:
+          type: integer
+        onboardingComplete:
+          type: boolean
+      required: [id, name, email, phone, businessName, language, onboardingStep, onboardingComplete]
+
+    UpdateBusinessProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        businessName:
+          type: string
+        businessType:
+          type: string
+        businessSize:
+          type: string
+        language:
+          type: string
+
+    OnboardingBody:
+      type: object
+      properties:
+        step:
+          type: integer
+        data:
+          type: object
+          additionalProperties: true
+      required: [step, data]
+
+    OnboardingResponse:
+      type: object
+      properties:
+        nextStep:
+          type: integer
+        complete:
+          type: boolean
+      required: [nextStep, complete]
+
+    # ===================== KNOWLEDGE BASE =====================
+    FAQ:
+      type: object
+      properties:
+        id:
+          type: string
+        question:
+          type: string
+        answer:
+          type: string
+      required: [id, question, answer]
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        description:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        inStock:
+          type: boolean
+      required: [id, name, price, inStock]
+
+    KnowledgeBase:
+      type: object
+      properties:
+        id:
+          type: string
+        rawContent:
+          type: string
+          nullable: true
+        systemPrompt:
+          type: string
+          nullable: true
+        customInstructions:
+          type: string
+          nullable: true
+        faqs:
+          type: array
+          items:
+            $ref: "#/components/schemas/FAQ"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        businessHours:
+          type: object
+          nullable: true
+          additionalProperties: true
+        tone:
+          type: string
+          enum: [friendly, formal, casual, hinglish]
+        personality:
+          type: string
+        promptVersion:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, tone, personality, promptVersion, updatedAt]
+
+    UpdateKnowledgeBaseBody:
+      type: object
+      properties:
+        rawContent:
+          type: string
+        systemPrompt:
+          type: string
+        customInstructions:
+          type: string
+        faqs:
+          type: array
+          items:
+            $ref: "#/components/schemas/FAQ"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        businessHours:
+          type: object
+          additionalProperties: true
+        tone:
+          type: string
+          enum: [friendly, formal, casual, hinglish]
+        personality:
+          type: string
+
+    GeneratePromptResponse:
+      type: object
+      properties:
+        prompt:
+          type: string
+        version:
+          type: integer
+      required: [prompt, version]
+
+    TestAIBody:
+      type: object
+      properties:
+        message:
+          type: string
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              role:
+                type: string
+              content:
+                type: string
+            required: [role, content]
+      required: [message]
+
+    TestAIResponse:
+      type: object
+      properties:
+        reply:
+          type: string
+        tokensUsed:
+          type: integer
+        responseTime:
+          type: integer
+      required: [reply, tokensUsed, responseTime]
+
+    # ===================== WHATSAPP =====================
+    WhatsappStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [disconnected, connecting, qr_ready, connected, authenticated, error]
+        phoneNumber:
+          type: string
+          nullable: true
+        lastConnected:
+          type: string
+          format: date-time
+          nullable: true
+        isAIEnabled:
+          type: boolean
+        awayMessage:
+          type: string
+          nullable: true
+        workingHours:
+          type: object
+          nullable: true
+          additionalProperties: true
+      required: [status, isAIEnabled]
+
+    WhatsappConnectResponse:
+      type: object
+      properties:
+        qrCode:
+          type: string
+          nullable: true
+        status:
+          type: string
+      required: [status]
+
+    WhatsappSettingsBody:
+      type: object
+      properties:
+        isAIEnabled:
+          type: boolean
+        awayMessage:
+          type: string
+        workingHours:
+          type: object
+          additionalProperties: true
+
+    # ===================== CONVERSATIONS =====================
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+        customerPhone:
+          type: string
+        customerName:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [open, pending, resolved, archived]
+        isAIEnabled:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        unreadCount:
+          type: integer
+        lastMessageAt:
+          type: string
+          format: date-time
+        lastMessage:
+          type: string
+          nullable: true
+        sentiment:
+          type: string
+          nullable: true
+        intent:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required: [id, customerPhone, status, isAIEnabled, tags, unreadCount, lastMessageAt]
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+        conversationId:
+          type: string
+        sender:
+          type: string
+          enum: [CUSTOMER, AI, OWNER, SYSTEM]
+        content:
+          type: string
+        messageType:
+          type: string
+          enum: [TEXT, IMAGE, VIDEO, AUDIO, DOCUMENT, LOCATION]
+        mediaUrl:
+          type: string
+          nullable: true
+        isRead:
+          type: boolean
+        aiConfidence:
+          type: number
+          nullable: true
+        responseTime:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, conversationId, sender, content, messageType, isRead, createdAt]
+
+    ConversationDetail:
+      type: object
+      properties:
+        conversation:
+          $ref: "#/components/schemas/Conversation"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        contact:
+          $ref: "#/components/schemas/Contact"
+      required: [conversation, messages]
+
+    ConversationListResponse:
+      type: object
+      properties:
+        conversations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Conversation"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required: [conversations, total, page, totalPages]
+
+    UpdateConversationBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [open, pending, resolved, archived]
+        isAIEnabled:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+
+    SendMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+        messageType:
+          type: string
+          enum: [TEXT, IMAGE, DOCUMENT]
+          default: TEXT
+        mediaUrl:
+          type: string
+      required: [content]
+
+    # ===================== CONTACTS =====================
+    Contact:
+      type: object
+      properties:
+        id:
+          type: string
+        phone:
+          type: string
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+          nullable: true
+        totalMessages:
+          type: integer
+        lastMessageAt:
+          type: string
+          format: date-time
+          nullable: true
+        firstContactAt:
+          type: string
+          format: date-time
+        totalOrders:
+          type: integer
+        totalRevenue:
+          type: number
+      required: [id, phone, tags, totalMessages, firstContactAt, totalOrders, totalRevenue]
+
+    ContactListResponse:
+      type: object
+      properties:
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Contact"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required: [contacts, total, page, totalPages]
+
+    CreateContactBody:
+      type: object
+      properties:
+        phone:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+      required: [phone]
+
+    UpdateContactBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+
+    # ===================== BROADCASTS =====================
+    Broadcast:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        message:
+          type: string
+        recipientType:
+          type: string
+          enum: [all, tag, custom]
+        recipientCount:
+          type: integer
+        status:
+          type: string
+          enum: [draft, scheduled, sending, sent, failed]
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        deliveredCount:
+          type: integer
+        readCount:
+          type: integer
+        repliedCount:
+          type: integer
+        failedCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, message, recipientType, recipientCount, status, deliveredCount, readCount, repliedCount, failedCount, createdAt]
+
+    BroadcastListResponse:
+      type: object
+      properties:
+        broadcasts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Broadcast"
+        total:
+          type: integer
+      required: [broadcasts, total]
+
+    CreateBroadcastBody:
+      type: object
+      properties:
+        name:
+          type: string
+        message:
+          type: string
+        recipientType:
+          type: string
+          enum: [all, tag, custom]
+        recipients:
+          type: array
+          items:
+            type: string
+        scheduledAt:
+          type: string
+          format: date-time
+      required: [name, message, recipientType]
+
+    # ===================== ANALYTICS =====================
+    AnalyticsSummary:
+      type: object
+      properties:
+        totalMessages:
+          type: integer
+        aiMessages:
+          type: integer
+        humanMessages:
+          type: integer
+        aiPercentage:
+          type: number
+        avgResponseTime:
+          type: number
+        totalContacts:
+          type: integer
+        newContacts:
+          type: integer
+        openConversations:
+          type: integer
+        resolvedConversations:
+          type: integer
+        satisfactionScore:
+          type: number
+          nullable: true
+        messagesThisPeriod:
+          type: integer
+        messagesLastPeriod:
+          type: integer
+        percentChange:
+          type: number
+      required: [totalMessages, aiMessages, humanMessages, aiPercentage, avgResponseTime, totalContacts, newContacts, openConversations, resolvedConversations, messagesThisPeriod, messagesLastPeriod, percentChange]
+
+    MessagesChartResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              total:
+                type: integer
+              ai:
+                type: integer
+              human:
+                type: integer
+            required: [date, total, ai, human]
+      required: [data]
+
+    TopQuestionsResponse:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            type: object
+            properties:
+              question:
+                type: string
+              count:
+                type: integer
+              category:
+                type: string
+            required: [question, count, category]
+      required: [questions]
+
+    # ===================== BILLING =====================
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+        plan:
+          type: string
+          enum: [TRIAL, STARTER, PRO, BUSINESS]
+        status:
+          type: string
+          enum: [TRIAL, ACTIVE, EXPIRED, CANCELLED, GRACE_PERIOD]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        trialEndDate:
+          type: string
+          format: date-time
+          nullable: true
+        messagesLimit:
+          type: integer
+        messagesUsed:
+          type: integer
+        daysRemaining:
+          type: integer
+        autoRenew:
+          type: boolean
+      required: [id, plan, status, startDate, endDate, messagesLimit, messagesUsed, daysRemaining, autoRenew]
+
+    Plan:
+      type: object
+      properties:
+        id:
+          type: string
+          enum: [STARTER, PRO, BUSINESS]
+        name:
+          type: string
+        price:
+          type: integer
+        messagesLimit:
+          type: integer
+        whatsappAccounts:
+          type: integer
+        features:
+          type: array
+          items:
+            type: string
+        popular:
+          type: boolean
+      required: [id, name, price, messagesLimit, whatsappAccounts, features, popular]
+
+    PlansResponse:
+      type: object
+      properties:
+        plans:
+          type: array
+          items:
+            $ref: "#/components/schemas/Plan"
+      required: [plans]
+
+    InitiatePaymentBody:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [STARTER, PRO, BUSINESS]
+      required: [plan]
+
+    PaymentInitResponse:
+      type: object
+      properties:
+        paymentId:
+          type: string
+        amount:
+          type: integer
+        upiId:
+          type: string
+        txnNote:
+          type: string
+        qrCodeUrl:
+          type: string
+          nullable: true
+        upiDeepLinks:
+          type: object
+          properties:
+            gpay:
+              type: string
+            phonepe:
+              type: string
+            paytm:
+              type: string
+          required: [gpay, phonepe, paytm]
+      required: [paymentId, amount, upiId, txnNote, upiDeepLinks]
+
+    VerifyPaymentBody:
+      type: object
+      properties:
+        paymentId:
+          type: string
+        utr:
+          type: string
+      required: [paymentId, utr]
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: integer
+        plan:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, AWAITING_VERIFICATION, VERIFIED, COMPLETED, FAILED, REFUNDED]
+        utr:
+          type: string
+          nullable: true
+        txnNote:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        invoiceNumber:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, amount, plan, status, txnNote, createdAt]
+
+    PaymentListResponse:
+      type: object
+      properties:
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+        total:
+          type: integer
+      required: [payments, total]
+
+    # ===================== NOTIFICATIONS =====================
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [message, payment, system, alert]
+        title:
+          type: string
+        message:
+          type: string
+        link:
+          type: string
+          nullable: true
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, type, title, message, isRead, createdAt]
+
+    NotificationListResponse:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        unreadCount:
+          type: integer
+      required: [notifications, unreadCount]
+
+    MarkReadBody:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+        all:
+          type: boolean
+      required: []

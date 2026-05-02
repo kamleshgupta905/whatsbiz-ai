@@ -1,0 +1,170 @@
+import { 
+  useGetAnalyticsSummary, 
+  useGetWhatsappStatus,
+  useGetSubscription 
+} from "@workspace/api-client-react";
+import { Link } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, Users, Zap, Clock, AlertTriangle, ExternalLink } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
+import { useGetMessagesChart } from "@workspace/api-client-react";
+
+export default function Dashboard() {
+  const { data: analytics, isLoading: isAnalyticsLoading } = useGetAnalyticsSummary(undefined, { query: { queryKey: ["analytics", "today"] } });
+  const { data: waStatus } = useGetWhatsappStatus({ query: { queryKey: ["waStatus"] } });
+  const { data: subscription } = useGetSubscription({ query: { queryKey: ["subscription"] } });
+  const { data: chartData } = useGetMessagesChart(undefined, { query: { queryKey: ["chartData"] } });
+
+  if (isAnalyticsLoading) {
+    return <div>Loading dashboard...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold">Dashboard</h1>
+
+      {subscription?.plan === 'TRIAL' && (
+        <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+              <Zap className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-primary-foreground">Trial Period Active</h3>
+              <p className="text-sm text-muted-foreground">{subscription.daysRemaining} days remaining in your free trial.</p>
+            </div>
+          </div>
+          <Link href="/billing">
+            <Button>Upgrade Now</Button>
+          </Link>
+        </div>
+      )}
+
+      {waStatus?.status !== 'connected' && (
+        <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-destructive" />
+            <div>
+              <h3 className="font-semibold text-destructive">WhatsApp Disconnected</h3>
+              <p className="text-sm text-destructive/80">Connect your number to start receiving messages.</p>
+            </div>
+          </div>
+          <Link href="/settings">
+            <Button variant="destructive">Connect Now</Button>
+          </Link>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Messages</CardTitle>
+            <MessageSquare className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics?.totalMessages || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {(analytics?.percentChange ?? 0) > 0 ? '+' : ''}{analytics?.percentChange ?? 0}% from last week
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">AI Handled</CardTitle>
+            <Zap className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics?.aiPercentage || 0}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {analytics?.aiMessages || 0} messages automated
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Response</CardTitle>
+            <Clock className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics?.avgResponseTime || 0}s</div>
+            <p className="text-xs text-muted-foreground mt-1">Instant replies</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Open Chats</CardTitle>
+            <Users className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics?.openConversations || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">Requires attention</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="col-span-1 lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Message Volume</CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            {chartData?.data ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData.data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                  />
+                  <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="ai" stroke="hsl(var(--chart-4))" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                No data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Link href="/conversations">
+              <Button variant="outline" className="w-full justify-between h-auto py-3">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  <span>View Inbox</span>
+                </div>
+                <ExternalLink className="w-4 h-4 text-muted-foreground" />
+              </Button>
+            </Link>
+            <Link href="/knowledge">
+              <Button variant="outline" className="w-full justify-between h-auto py-3">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  <span>Train AI</span>
+                </div>
+                <ExternalLink className="w-4 h-4 text-muted-foreground" />
+              </Button>
+            </Link>
+            <Link href="/broadcasts">
+              <Button variant="outline" className="w-full justify-between h-auto py-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  <span>Send Broadcast</span>
+                </div>
+                <ExternalLink className="w-4 h-4 text-muted-foreground" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
