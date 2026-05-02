@@ -67,10 +67,10 @@ export default function Login() {
         <div className="absolute bottom-12 right-[-60px] w-72 h-72 rounded-full bg-white/5 blur-2xl" />
         <div className="absolute top-1/2 left-1/3 w-40 h-40 rounded-full bg-emerald-300/10 blur-xl" />
 
-        {/* Logo on white pill so it's always legible over any bg */}
+        {/* Logo — large and prominent */}
         <div className="relative">
-          <div className="bg-white/95 rounded-2xl px-5 py-3 inline-block shadow-lg shadow-black/10">
-            <img src="/logo-transparent.png" alt="WhatsBiz AI" className="h-10 w-auto object-contain" />
+          <div className="bg-white/95 rounded-3xl px-6 py-4 inline-block shadow-xl shadow-black/15">
+            <img src="/logo-transparent.png" alt="WhatsBiz AI" className="h-20 w-auto object-contain" />
           </div>
         </div>
 
