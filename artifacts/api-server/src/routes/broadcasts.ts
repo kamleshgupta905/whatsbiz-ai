@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { CreateBroadcastBody } from "@workspace/api-zod";
 import { requireAuth, type AuthRequest } from "../lib/auth";
 import { sendBroadcastMessages } from "../lib/whatsapp-manager";
+import { getPlanLimits } from "../lib/plan-limits";
 
 const router = Router();
 
@@ -28,16 +29,22 @@ function formatBroadcast(b: typeof broadcastsTable.$inferSelect) {
 
 router.get("/broadcasts", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const [broadcasts, countResult] = await Promise.all([
+  const [broadcasts, countResult, limits] = await Promise.all([
     db.select().from(broadcastsTable)
       .where(eq(broadcastsTable.userId, user.id))
       .orderBy(sql`${broadcastsTable.createdAt} DESC`),
     db.select({ count: sql<number>`count(*)` }).from(broadcastsTable).where(eq(broadcastsTable.userId, user.id)),
+    getPlanLimits(user.id),
   ]);
 
   res.json({
     broadcasts: broadcasts.map(formatBroadcast),
     total: Number(countResult[0]?.count ?? 0),
+    limits: {
+      broadcastLimit: limits.broadcastLimit,
+      isPremium: limits.isPremium,
+      plan: limits.plan,
+    },
   });
 });
 
@@ -66,8 +73,10 @@ router.post("/broadcasts/:id/send", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
   const { id } = req.params;
 
-  const [broadcast] = await db.select().from(broadcastsTable)
-    .where(eq(broadcastsTable.id, id));
+  const [broadcast, limits] = await Promise.all([
+    db.select().from(broadcastsTable).where(eq(broadcastsTable.id, id)).then(r => r[0]),
+    getPlanLimits(user.id),
+  ]);
 
   if (!broadcast || broadcast.userId !== user.id) {
     res.status(404).json({ error: "Broadcast not found" });
@@ -75,20 +84,24 @@ router.post("/broadcasts/:id/send", requireAuth, async (req, res) => {
   }
 
   // Fetch contacts to send to
-  let phones: string[] = [];
+  let allPhones: string[] = [];
   if (broadcast.recipientType === "all") {
     const contacts = await db.select({ phone: contactsTable.phone })
       .from(contactsTable)
       .where(eq(contactsTable.userId, user.id));
-    phones = contacts.map((c) => c.phone);
+    allPhones = contacts.map((c) => c.phone);
   } else {
-    phones = (broadcast.recipients as string[]) ?? [];
+    allPhones = (broadcast.recipients as string[]) ?? [];
   }
 
-  if (phones.length === 0) {
+  if (allPhones.length === 0) {
     res.status(400).json({ error: "No recipients found" });
     return;
   }
+
+  // ── Enforce plan recipient cap ─────────────────────────────────────────────
+  const phones = allPhones.slice(0, limits.broadcastLimit);
+  const capped = phones.length < allPhones.length;
 
   // Mark as sending
   await db.update(broadcastsTable)
@@ -109,7 +122,13 @@ router.post("/broadcasts/:id/send", requireAuth, async (req, res) => {
     });
 
   const [updated] = await db.select().from(broadcastsTable).where(eq(broadcastsTable.id, id));
-  res.json(formatBroadcast(updated));
+  res.json({
+    ...formatBroadcast(updated),
+    capped,
+    cappedTo: limits.broadcastLimit,
+    plan: limits.plan,
+    isPremium: limits.isPremium,
+  });
 });
 
 export default router;

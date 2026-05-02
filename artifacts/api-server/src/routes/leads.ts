@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, leadsTable, contactsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../lib/auth";
+import { getPlanLimits, incrementScrapeSession } from "../lib/plan-limits";
 
 const router = Router();
 
@@ -60,7 +61,6 @@ async function scrapeGoogleSearch(query: string, location: string, limit: number
 
   const results: any[] = [];
 
-  // Local pack (best — has phone/address)
   for (const r of data.local_results || []) {
     results.push({
       name: r.title || null,
@@ -74,7 +74,6 @@ async function scrapeGoogleSearch(query: string, location: string, limit: number
     });
   }
 
-  // Organic results (fill up to limit)
   for (const r of data.organic_results || []) {
     if (results.length >= limit) break;
     results.push({
@@ -96,6 +95,19 @@ async function scrapeGoogleSearch(query: string, location: string, limit: number
 
 router.post("/leads/scrape", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
+
+  // ── Plan limit check ──────────────────────────────────────────────────────
+  const limits = await getPlanLimits(user.id);
+  if (!limits.isPremium && limits.scrapeSessionsUsed >= limits.scrapeSessionsMax) {
+    res.status(403).json({
+      error: "Free plan limit reached",
+      limitReached: true,
+      scrapeSessionsUsed: limits.scrapeSessionsUsed,
+      scrapeSessionsMax: limits.scrapeSessionsMax,
+      plan: limits.plan,
+    });
+    return;
+  }
 
   const apiKey = process.env.SERPAPI_KEY;
   if (!apiKey) {
@@ -120,7 +132,6 @@ router.post("/leads/scrape", requireAuth, async (req, res) => {
       ? await scrapeGoogleMaps(query.trim(), location.trim(), limit, apiKey)
       : await scrapeGoogleSearch(query.trim(), location.trim(), limit, apiKey);
 
-    // Save to DB
     const saved = await db.insert(leadsTable).values(
       raw.map((l: any) => ({
         userId: user.id,
@@ -131,7 +142,20 @@ router.post("/leads/scrape", requireAuth, async (req, res) => {
       }))
     ).returning();
 
-    res.json({ leads: saved, total: saved.length });
+    // Increment scrape session counter for this user
+    await incrementScrapeSession(user.id);
+
+    // Return updated usage info alongside results
+    const updatedLimits = await getPlanLimits(user.id);
+    res.json({
+      leads: saved,
+      total: saved.length,
+      usage: {
+        scrapeSessionsUsed: updatedLimits.scrapeSessionsUsed,
+        scrapeSessionsMax: updatedLimits.scrapeSessionsMax,
+        isPremium: updatedLimits.isPremium,
+      },
+    });
   } catch (err) {
     req.log.error(err, "Lead scrape error");
     res.status(500).json({ error: (err as Error).message });
@@ -140,11 +164,22 @@ router.post("/leads/scrape", requireAuth, async (req, res) => {
 
 router.get("/leads", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const leads = await db.select().from(leadsTable)
-    .where(eq(leadsTable.userId, user.id))
-    .orderBy(desc(leadsTable.createdAt))
-    .limit(200);
-  res.json({ leads });
+  const [leads, limits] = await Promise.all([
+    db.select().from(leadsTable)
+      .where(eq(leadsTable.userId, user.id))
+      .orderBy(desc(leadsTable.createdAt))
+      .limit(200),
+    getPlanLimits(user.id),
+  ]);
+  res.json({
+    leads,
+    usage: {
+      scrapeSessionsUsed: limits.scrapeSessionsUsed,
+      scrapeSessionsMax: limits.scrapeSessionsMax,
+      isPremium: limits.isPremium,
+      plan: limits.plan,
+    },
+  });
 });
 
 router.post("/leads/:id/import", requireAuth, async (req, res) => {
@@ -164,7 +199,6 @@ router.post("/leads/:id/import", requireAuth, async (req, res) => {
     return;
   }
 
-  // Need a phone to import as contact
   if (!lead.phone) {
     res.status(400).json({ error: "No phone number — cannot import as contact" });
     return;

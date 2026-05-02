@@ -17,6 +17,7 @@ export const subscriptionsTable = pgTable("subscriptions", {
   trialEndDate: timestamp("trial_end_date"),
   messagesLimit: integer("messages_limit").default(100).notNull(),
   messagesUsed: integer("messages_used").default(0).notNull(),
+  scrapeSessionsUsed: integer("scrape_sessions_used").default(0).notNull(),
   whatsappLimit: integer("whatsapp_limit").default(1).notNull(),
   autoRenew: boolean("auto_renew").default(false).notNull(),
   cancelledAt: timestamp("cancelled_at"),
