@@ -72,7 +72,7 @@ export default function Register() {
             style={{ background: "linear-gradient(135deg, #075E54 0%, #25D366 100%)" }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <img src="/icon.png" alt="WhatsBiz AI" className="h-16 w-16 object-contain shrink-0" style={{ filter: "brightness(0) invert(1) drop-shadow(0 2px 8px rgba(0,0,0,0.3))" }} />
+              <img src="/icon.png" alt="WhatsBiz AI" className="h-16 w-16 object-contain shrink-0" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(10deg) drop-shadow(0 2px 10px rgba(0,0,0,0.35))" }} />
               <div className="text-left">
                 <p className="text-white font-extrabold text-xl leading-tight tracking-tight">
                   WhatsBiz <span className="text-emerald-300">AI</span>
