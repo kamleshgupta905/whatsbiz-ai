@@ -100,12 +100,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
 
       {subscription?.plan === "TRIAL" && (
-        <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl flex items-center justify-between">
+        <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
               <Zap className="w-5 h-5 text-primary" />
             </div>
             <div>
@@ -115,16 +115,16 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <Link href="/billing">
-            <Button>Upgrade Now</Button>
+          <Link href="/billing" className="w-full sm:w-auto shrink-0">
+            <Button className="w-full sm:w-auto">Upgrade Now</Button>
           </Link>
         </div>
       )}
 
       {waStatus?.status !== "connected" && (
-        <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-xl flex items-center justify-between">
+        <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-destructive" />
+            <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
             <div>
               <h3 className="font-semibold text-destructive">WhatsApp Disconnected</h3>
               <p className="text-sm text-destructive/80">
@@ -134,6 +134,7 @@ export default function Dashboard() {
           </div>
           <Button
             variant="destructive"
+            className="w-full sm:w-auto shrink-0"
             onClick={handleOpenConnect}
             disabled={connectWa.isPending}
           >

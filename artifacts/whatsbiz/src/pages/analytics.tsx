@@ -18,13 +18,13 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Analytics</h1>
           <p className="text-muted-foreground">Insights into your WhatsApp automation.</p>
         </div>
         <Select value={period} onValueChange={(v: any) => setPeriod(v)}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Select period" />
           </SelectTrigger>
           <SelectContent>

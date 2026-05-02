@@ -53,7 +53,7 @@ export default function Settings() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold">Settings</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold">Settings</h1>
 
       <Card>
         <CardHeader>
@@ -94,7 +94,7 @@ export default function Settings() {
           <CardDescription>Update your company details.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Your Name</Label>
               <Input 

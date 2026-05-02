@@ -195,11 +195,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </Sidebar>
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="h-14 border-b flex items-center px-4 bg-card md:hidden">
-            <SidebarTrigger />
-            <span className="ml-4 font-bold text-primary">WhatsBiz AI</span>
+          <header className="h-14 border-b flex items-center px-4 bg-card md:hidden shrink-0">
+            <SidebarTrigger className="shrink-0" />
+            <div className="flex items-center gap-2 ml-3 min-w-0">
+              <img src="/icon.png" alt="" className="h-7 w-7 object-contain shrink-0" />
+              <span className="font-bold text-primary truncate">WhatsBiz AI</span>
+            </div>
           </header>
-          <main className="flex-1 overflow-auto p-4 md:p-8">
+          <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {children}
           </main>
         </div>
