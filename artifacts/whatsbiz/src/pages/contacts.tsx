@@ -49,7 +49,7 @@ export default function Contacts() {
       await queryClient.invalidateQueries({ queryKey: ["contacts"] });
       toast({ title: "Contact deleted", description: `${deleteName} removed successfully.` });
     } catch {
-      toast({ variant: "destructive", title: "Error", description: "Contact delete nahi ho saka." });
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete the contact." });
     } finally {
       setIsDeleting(false);
       setDeleteId(null);
@@ -58,9 +58,9 @@ export default function Contacts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Contacts CRM</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Contacts CRM</h1>
           <p className="text-muted-foreground">Manage your WhatsApp customers and leads.</p>
         </div>
         <div className="flex gap-2">
@@ -85,65 +85,67 @@ export default function Contacts() {
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">Loading contacts...</div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Tags</TableHead>
-                <TableHead className="text-right">Total Msgs</TableHead>
-                <TableHead className="text-right">Revenue</TableHead>
-                <TableHead className="text-right">Last Contact</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data?.contacts?.map((contact) => (
-                <TableRow key={contact.id}>
-                  <TableCell className="font-medium">{contact.name || "Unknown"}</TableCell>
-                  <TableCell className="font-mono text-sm">{contact.phone}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 flex-wrap">
-                      {contact.tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-xs font-normal">{tag}</Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">{contact.totalMessages}</TableCell>
-                  <TableCell className="text-right font-medium">₹{contact.totalRevenue}</TableCell>
-                  <TableCell className="text-right text-muted-foreground text-sm">
-                    {contact.lastMessageAt ? new Date(contact.lastMessageAt).toLocaleDateString("en-IN") : "N/A"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteClick(contact.id, contact.name || "")}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!data?.contacts?.length && (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    {search ? `"${search}" se koi contact nahi mila.` : "Koi contact nahi hai abhi."}
-                  </TableCell>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead className="hidden sm:table-cell">Tags</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Total Msgs</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Revenue</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Last Contact</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {data?.contacts?.map((contact) => (
+                  <TableRow key={contact.id}>
+                    <TableCell className="font-medium">{contact.name || "Unknown"}</TableCell>
+                    <TableCell className="font-mono text-sm">{contact.phone}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="flex gap-1 flex-wrap">
+                        {contact.tags.map(tag => (
+                          <Badge key={tag} variant="secondary" className="text-xs font-normal">{tag}</Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right hidden md:table-cell">{contact.totalMessages}</TableCell>
+                    <TableCell className="text-right font-medium hidden md:table-cell">₹{contact.totalRevenue}</TableCell>
+                    <TableCell className="text-right text-muted-foreground text-sm hidden sm:table-cell">
+                      {contact.lastMessageAt ? new Date(contact.lastMessageAt).toLocaleDateString("en-IN") : "N/A"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteClick(contact.id, contact.name || "")}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!data?.contacts?.length && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                      {search ? `No contacts found for "${search}".` : "No contacts yet."}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Contact delete karein?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Contact?</AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="font-semibold">{deleteName}</span> ko permanently delete kar doge. Yeh action undo nahi ho sakta.
+              <span className="font-semibold">{deleteName}</span> will be permanently deleted. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

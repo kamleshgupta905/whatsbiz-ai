@@ -73,14 +73,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
     if (prev === "connected" && current !== "connected") {
       toast({
         variant: "destructive",
-        title: "WhatsApp Disconnect Ho Gaya",
-        description: "AI replies band ho gayi hain. Dashboard se dobara connect karo.",
+        title: "WhatsApp Disconnected",
+        description: "AI replies have stopped. Reconnect from the Dashboard.",
         duration: 0,
       });
     } else if (prev !== "connected" && current === "connected") {
       toast({
         title: "WhatsApp Connected!",
-        description: "AI replies phir se shuru ho gayi hain.",
+        description: "AI replies are active again.",
         duration: 5000,
       });
     }

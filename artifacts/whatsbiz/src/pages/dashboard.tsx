@@ -286,10 +286,10 @@ export default function Dashboard() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Smartphone className="w-5 h-5 text-primary" />
-              WhatsApp Connect karo
+              Connect WhatsApp
             </DialogTitle>
             <DialogDescription>
-              WhatsApp open karo → Menu (⋮) → Linked Devices → Link a Device → Yeh QR scan karo
+              Open WhatsApp → Menu (⋮) → Linked Devices → Link a Device → Scan this QR code
             </DialogDescription>
           </DialogHeader>
 
@@ -302,11 +302,11 @@ export default function Dashboard() {
                 <div>
                   <h3 className="font-bold text-lg text-foreground">Connected!</h3>
                   <p className="text-sm text-muted-foreground">
-                    WhatsApp successfully link ho gaya. AI replies shuru ho gayi hain.
+                    WhatsApp linked successfully. AI replies are now active.
                   </p>
                 </div>
                 <Button className="w-full" onClick={() => handleDialogClose(false)}>
-                  Dashboard pe Jao
+                  Go to Dashboard
                 </Button>
               </div>
             ) : (
@@ -322,7 +322,7 @@ export default function Dashboard() {
                     <div className="w-52 h-52 bg-muted animate-pulse rounded-xl flex flex-col items-center justify-center gap-2">
                       <RefreshCw className="w-6 h-6 text-muted-foreground animate-spin" />
                       <span className="text-muted-foreground text-xs text-center px-4">
-                        {connectWa.isPending ? "Session shuru ho rahi hai..." : "QR generate ho raha hai..."}
+                        {connectWa.isPending ? "Starting session..." : "Generating QR code..."}
                       </span>
                     </div>
                   )}
@@ -330,13 +330,13 @@ export default function Dashboard() {
 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse inline-block" />
-                  Scan hone ka wait kar raha hai...
+                  Waiting for scan...
                 </div>
 
                 <div className="bg-muted/50 rounded-lg p-3 w-full text-xs text-muted-foreground space-y-1">
-                  <p>1. Phone mein WhatsApp kholo</p>
-                  <p>2. Menu (⋮) → Linked Devices tap karo</p>
-                  <p>3. "Link a Device" → Camera se yeh QR scan karo</p>
+                  <p>1. Open WhatsApp on your phone</p>
+                  <p>2. Tap Menu (⋮) → Linked Devices</p>
+                  <p>3. Tap "Link a Device" → Scan this QR with your camera</p>
                 </div>
 
                 {qrData?.qrBase64 && (
@@ -346,7 +346,7 @@ export default function Dashboard() {
                     onClick={() => refetchQR()}
                     className="text-xs text-muted-foreground"
                   >
-                    <RefreshCw className="w-3 h-3 mr-1" /> QR Refresh karo
+                    <RefreshCw className="w-3 h-3 mr-1" /> Refresh QR
                   </Button>
                 )}
               </>

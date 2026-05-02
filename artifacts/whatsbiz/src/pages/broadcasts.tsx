@@ -27,11 +27,11 @@ async function apiPost(path: string, body?: unknown) {
 }
 
 const STATUS_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  draft:    { label: "Draft",    variant: "secondary" },
-  sending:  { label: "Sending…", variant: "outline"   },
-  sent:     { label: "Sent",     variant: "default"   },
-  scheduled:{ label: "Scheduled",variant: "outline"   },
-  failed:   { label: "Failed",   variant: "destructive"},
+  draft:     { label: "Draft",     variant: "secondary"   },
+  sending:   { label: "Sending…",  variant: "outline"     },
+  sent:      { label: "Sent",      variant: "default"     },
+  scheduled: { label: "Scheduled", variant: "outline"     },
+  failed:    { label: "Failed",    variant: "destructive" },
 };
 
 export default function Broadcasts() {
@@ -51,7 +51,7 @@ export default function Broadcasts() {
 
   const handleCreate = async () => {
     if (!name.trim() || !message.trim()) {
-      toast({ variant: "destructive", title: "Fields required", description: "Name aur message dono bharo." });
+      toast({ variant: "destructive", title: "Fields required", description: "Please fill in the campaign name and message." });
       return;
     }
     setIsSaving(true);
@@ -62,7 +62,7 @@ export default function Broadcasts() {
       }
       await apiPost("/api/broadcasts", payload);
       await queryClient.invalidateQueries({ queryKey: ["broadcasts"] });
-      toast({ title: "Broadcast created!", description: "Ab list mein jaake Send karo." });
+      toast({ title: "Broadcast created!", description: "Click 'Send Now' to send it to your contacts." });
       setShowCreate(false);
       resetForm();
     } catch (e) {
@@ -77,7 +77,7 @@ export default function Broadcasts() {
     try {
       await apiPost(`/api/broadcasts/${id}/send`);
       await queryClient.invalidateQueries({ queryKey: ["broadcasts"] });
-      toast({ title: "Broadcast sending!", description: "Messages WhatsApp ke through bheje ja rahe hain." });
+      toast({ title: "Broadcast sending!", description: "Messages are being sent via WhatsApp." });
     } catch (e) {
       toast({ variant: "destructive", title: "Send failed", description: (e as Error).message });
     } finally {
@@ -90,20 +90,20 @@ export default function Broadcasts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Broadcasts</h1>
-          <p className="text-muted-foreground">Apne sabhi customers ko ek saath WhatsApp message bhejo.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Broadcasts</h1>
+          <p className="text-muted-foreground">Send bulk WhatsApp messages to all your customers at once.</p>
         </div>
         <Button className="gap-2" onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4" /> New Broadcast
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6 flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
               <Megaphone className="w-6 h-6 text-primary" />
             </div>
             <div>
@@ -114,7 +114,7 @@ export default function Broadcasts() {
         </Card>
         <Card>
           <CardContent className="pt-6 flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-6 h-6 text-green-500" />
             </div>
             <div>
@@ -125,7 +125,7 @@ export default function Broadcasts() {
         </Card>
         <Card>
           <CardContent className="pt-6 flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0">
               <Users className="w-6 h-6 text-blue-500" />
             </div>
             <div>
@@ -146,8 +146,8 @@ export default function Broadcasts() {
           ) : !data?.broadcasts?.length ? (
             <div className="py-12 flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg bg-muted/20">
               <Megaphone className="w-12 h-12 text-muted-foreground mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-1">Abhi koi broadcast nahi hai</h3>
-              <p className="text-muted-foreground mb-4">Pehla broadcast banao aur customers tak pahuncho.</p>
+              <h3 className="text-lg font-medium mb-1">No broadcasts yet</h3>
+              <p className="text-muted-foreground mb-4">Create your first broadcast to reach your customers instantly.</p>
               <Button variant="outline" onClick={() => setShowCreate(true)}>Create Broadcast</Button>
             </div>
           ) : (
@@ -156,14 +156,14 @@ export default function Broadcasts() {
                 const badge = STATUS_BADGE[b.status] ?? { label: b.status, variant: "secondary" as const };
                 const isSending = sendingId === b.id || b.status === "sending";
                 return (
-                  <div key={b.id} className="p-4 border rounded-xl flex items-center justify-between gap-4">
+                  <div key={b.id} className="p-4 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h4 className="font-semibold truncate">{b.name}</h4>
                         <Badge variant={badge.variant} className="shrink-0 text-xs">{badge.label}</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-1 mb-2">{b.message}</p>
-                      <div className="flex gap-4 text-xs text-muted-foreground">
+                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(b.createdAt).toLocaleDateString("en-IN")}</span>
                         <span className="flex items-center gap-1"><Users className="w-3 h-3" />{b.recipientCount} recipients</span>
                         {b.deliveredCount > 0 && (
@@ -177,7 +177,7 @@ export default function Broadcasts() {
                     {(b.status === "draft" || b.status === "scheduled") && (
                       <Button
                         size="sm"
-                        className="gap-2 shrink-0"
+                        className="gap-2 shrink-0 w-full sm:w-auto"
                         onClick={() => handleSend(b.id)}
                         disabled={isSending}
                       >
@@ -194,11 +194,11 @@ export default function Broadcasts() {
       </Card>
 
       <Dialog open={showCreate} onOpenChange={(o) => { if (!o) resetForm(); setShowCreate(o); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[95vw]">
           <DialogHeader>
             <DialogTitle>New Broadcast</DialogTitle>
             <DialogDescription>
-              Ek message likho jo aapke sabhi contacts ko WhatsApp pe milega.
+              Write a message that will be sent to your contacts on WhatsApp.
             </DialogDescription>
           </DialogHeader>
 
@@ -215,7 +215,7 @@ export default function Broadcasts() {
             <div className="space-y-1.5">
               <Label>Message</Label>
               <Textarea
-                placeholder="Namaste! Aaj hamare paas special discount hai..."
+                placeholder="Hello! We have a special offer for you today..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 className="min-h-[120px]"
@@ -230,7 +230,7 @@ export default function Broadcasts() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Sabhi Contacts</SelectItem>
+                  <SelectItem value="all">All Contacts</SelectItem>
                   <SelectItem value="custom">Custom Numbers</SelectItem>
                 </SelectContent>
               </Select>
@@ -238,7 +238,7 @@ export default function Broadcasts() {
 
             {recipientType === "custom" && (
               <div className="space-y-1.5">
-                <Label>Phone Numbers (ek line mein ek number)</Label>
+                <Label>Phone Numbers (one per line)</Label>
                 <Textarea
                   placeholder={"+919876543210\n+919812345678"}
                   value={phones}
@@ -249,9 +249,9 @@ export default function Broadcasts() {
             )}
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { resetForm(); setShowCreate(false); }}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={isSaving} className="gap-2">
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => { resetForm(); setShowCreate(false); }}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={isSaving} className="gap-2 w-full sm:w-auto">
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {isSaving ? "Creating…" : "Create"}
             </Button>

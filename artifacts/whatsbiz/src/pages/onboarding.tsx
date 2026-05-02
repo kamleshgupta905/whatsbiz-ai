@@ -105,21 +105,21 @@ export default function Onboarding() {
         {step === 1 && (
           <Card>
             <CardHeader>
-              <CardTitle>Apna AI System Prompt likho</CardTitle>
+              <CardTitle>Set Up Your AI System Prompt</CardTitle>
               <CardDescription>
-                Neeche likha hua prompt already bhara hua hai — apni business details se replace karo aur bas ho jayega. Yahi aapke AI ka "brain" hai.
+                The prompt below is pre-filled — replace the placeholders with your business details. This is your AI's "brain".
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Textarea
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
-                className="min-h-[320px] font-mono text-sm leading-relaxed"
+                className="min-h-[280px] sm:min-h-[320px] font-mono text-sm leading-relaxed"
                 placeholder="Enter your AI system prompt here..."
                 data-testid="input-system-prompt"
               />
               <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm text-muted-foreground">
-                <strong className="text-foreground">Tip:</strong> Curly braces wali cheezein replace karo — jaise business timings, products, pricing aur location. Jitna zyada info, utna smart AI.
+                <strong className="text-foreground">Tip:</strong> Replace the bracketed placeholders with your actual business info — timings, products, pricing and location. More info = smarter AI.
               </div>
               <Button
                 className="w-full h-12 text-base font-semibold"
@@ -138,10 +138,10 @@ export default function Onboarding() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Smartphone className="w-5 h-5 text-primary" />
-                WhatsApp Connect karo
+                Connect WhatsApp
               </CardTitle>
               <CardDescription>
-                Phone mein WhatsApp kholo → Menu (3 dots) → Linked Devices → Link a Device → QR scan karo.
+                Open WhatsApp → Menu (3 dots) → Linked Devices → Link a Device → Scan the QR code.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -152,10 +152,10 @@ export default function Onboarding() {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-foreground">WhatsApp Connected!</h3>
-                    <p className="text-muted-foreground mt-1">Aapka AI ab live hai. Customers ke messages automatically handle hone lagenge.</p>
+                    <p className="text-muted-foreground mt-1">Your AI is now live. Customer messages will be handled automatically.</p>
                   </div>
                   <Button className="w-full h-12 text-base font-semibold" onClick={handleDone}>
-                    Dashboard par jao
+                    Go to Dashboard
                   </Button>
                 </div>
               ) : (
@@ -176,14 +176,14 @@ export default function Onboarding() {
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground text-center max-w-xs">
-                      QR code 30 seconds mein expire hota hai. Agar expire ho jaye to page refresh karo.
+                      The QR code expires in 30 seconds. Refresh the page if it expires.
                     </p>
                   </div>
 
                   <div className="flex justify-between items-center pt-2 border-t">
                     <span className="text-sm text-muted-foreground flex items-center gap-2">
                       <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse inline-block" />
-                      WhatsApp scan hone ka wait kar raha hai...
+                      Waiting for WhatsApp scan...
                     </span>
                     <Button variant="outline" size="sm" onClick={handleDone}>
                       Skip for now
