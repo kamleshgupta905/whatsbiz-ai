@@ -7,7 +7,7 @@ export default function Landing() {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="container mx-auto px-4 py-6 flex items-center justify-between">
         <div className="flex items-center gap-2 font-bold text-2xl text-primary">
-          <MessageSquare className="w-8 h-8" />
+          <img src="/icon.png" alt="WhatsBiz AI" className="h-10 w-10 object-contain" />
           <span>WhatsBiz AI</span>
         </div>
         <div className="flex items-center gap-4">
