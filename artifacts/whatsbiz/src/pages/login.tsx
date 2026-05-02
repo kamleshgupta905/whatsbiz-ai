@@ -11,7 +11,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { WbLogo, WbLogoInverse } from "@/components/WbLogo";
 import { Zap, Users, Megaphone, MessageSquare, Lock, Mail } from "lucide-react";
 
 const loginSchema = z.object({
@@ -68,12 +67,10 @@ export default function Login() {
         <div className="absolute bottom-12 right-[-60px] w-72 h-72 rounded-full bg-white/5 blur-2xl" />
         <div className="absolute top-1/2 left-1/3 w-40 h-40 rounded-full bg-emerald-300/10 blur-xl" />
 
-        {/* Logo */}
-        <div className="relative flex items-center gap-3">
-          <WbLogoInverse size={44} />
-          <div>
-            <span className="text-white font-bold text-2xl tracking-tight">WhatsBiz</span>
-            <span className="text-emerald-300 font-bold text-2xl ml-1">AI</span>
+        {/* Logo on white pill so it's always legible over any bg */}
+        <div className="relative">
+          <div className="bg-white/95 rounded-2xl px-5 py-3 inline-block shadow-lg shadow-black/10">
+            <img src="/logo-transparent.png" alt="WhatsBiz AI" className="h-10 w-auto object-contain" />
           </div>
         </div>
 
@@ -127,9 +124,8 @@ export default function Login() {
       >
         <div className="w-full max-w-md">
           {/* Mobile-only logo */}
-          <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <WbLogo size={36} />
-            <span className="font-bold text-xl">WhatsBiz <span className="text-primary">AI</span></span>
+          <div className="lg:hidden flex justify-center mb-8">
+            <img src="/logo-transparent.png" alt="WhatsBiz AI" className="h-12 w-auto object-contain" />
           </div>
 
           <div className="mb-8">

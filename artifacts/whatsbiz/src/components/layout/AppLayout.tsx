@@ -16,7 +16,6 @@ import {
   Sparkles,
   Shield,
 } from "lucide-react";
-import { WbLogo } from "@/components/WbLogo";
 import { useLogout, useGetWhatsappStatus } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -104,13 +103,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <div className="flex h-screen w-full bg-muted/20">
         <Sidebar className="border-r bg-sidebar border-sidebar-border">
-          <SidebarHeader className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <WbLogo size={36} />
-              <span className="font-bold text-lg tracking-tight">
-                WhatsBiz <span className="text-primary">AI</span>
-              </span>
-            </div>
+          <SidebarHeader className="px-4 py-3">
+            <img
+              src="/logo-transparent.png"
+              alt="WhatsBiz AI"
+              className="h-11 w-auto object-contain object-left"
+            />
           </SidebarHeader>
 
           <SidebarContent>
