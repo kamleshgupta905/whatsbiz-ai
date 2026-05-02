@@ -17,9 +17,14 @@ router.get("/whatsapp/status", requireAuth, async (req, res) => {
   res.set("Pragma", "no-cache");
   res.set("Expires", "0");
 
+  // If no in-memory session exists, the Baileys socket is gone (server restart or never started).
+  // DB may still say "connected" from before — always return "disconnected" in that case.
+  const liveStatus = inMemory?.status ?? "disconnected";
+  const livePhone = liveStatus === "connected" ? (inMemory?.phoneNumber ?? session?.phoneNumber ?? null) : null;
+
   res.json({
-    status: inMemory?.status ?? session?.status ?? "disconnected",
-    phoneNumber: inMemory?.phoneNumber ?? session?.phoneNumber ?? null,
+    status: liveStatus,
+    phoneNumber: livePhone,
     lastConnected: session?.lastConnected ?? null,
     isAIEnabled: session?.isAIEnabled ?? true,
     awayMessage: session?.awayMessage ?? null,

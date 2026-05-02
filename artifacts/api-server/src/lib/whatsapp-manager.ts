@@ -41,18 +41,33 @@ function clearHealthTimer(userId: string) {
   if (t) { clearInterval(t); healthTimers.delete(userId); }
 }
 
+async function pingSocket(sock: WASocket): Promise<boolean> {
+  try {
+    await Promise.race([
+      sock.sendPresenceUpdate("available"),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("ping_timeout")), 8_000)
+      ),
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function startHealthCheck(userId: string, state: SessionState) {
   clearHealthTimer(userId);
   const timer = setInterval(async () => {
     if (state.status !== "connected") { clearHealthTimer(userId); return; }
+    if (!state.socket) { clearHealthTimer(userId); return; }
 
-    const wsState = (state.socket as unknown as { ws?: { readyState?: number } })?.ws?.readyState;
-    const isWsOpen = wsState === 1;
+    const alive = await pingSocket(state.socket);
 
-    if (!isWsOpen) {
+    if (!alive) {
       state.status = "disconnected";
       state.socket = null;
       state.qrBase64 = null;
+      state.phoneNumber = null;
       clearHealthTimer(userId);
       await db.update(whatsappSessionsTable)
         .set({ status: "disconnected", phoneNumber: null, sessionData: null, qrCode: null, lastDisconnect: new Date(), updatedAt: new Date() })
