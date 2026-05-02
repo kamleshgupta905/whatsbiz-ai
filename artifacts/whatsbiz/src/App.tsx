@@ -20,10 +20,11 @@ import Analytics from "@/pages/analytics";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import Leads from "@/pages/leads";
+import AdminPanel from "@/pages/admin";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+function ProtectedRoute({ component: Component }: { component: React.ComponentType<object> }) {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -37,9 +38,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     return <div className="h-screen w-full flex items-center justify-center bg-background">Loading...</div>;
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <AppLayout>
@@ -55,7 +54,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/onboarding"><Onboarding /></Route>
-      
+
       {/* Protected Routes */}
       <Route path="/dashboard"><ProtectedRoute component={Dashboard} /></Route>
       <Route path="/conversations"><ProtectedRoute component={Conversations} /></Route>
@@ -66,7 +65,8 @@ function Router() {
       <Route path="/billing"><ProtectedRoute component={Billing} /></Route>
       <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
       <Route path="/leads"><ProtectedRoute component={Leads} /></Route>
-      
+      <Route path="/admin"><ProtectedRoute component={AdminPanel} /></Route>
+
       <Route component={NotFound} />
     </Switch>
   );

@@ -15,6 +15,7 @@ import {
   WifiOff,
   Wifi,
   Sparkles,
+  Shield,
 } from "lucide-react";
 import { useLogout, useGetWhatsappStatus } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -32,20 +33,20 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: MessageSquare, label: "Conversations", href: "/conversations" },
-  { icon: Users, label: "Contacts", href: "/contacts" },
-  { icon: Sparkles, label: "Lead Scraper", href: "/leads" },
-  { icon: BookOpen, label: "Knowledge Base", href: "/knowledge" },
-  { icon: Megaphone, label: "Broadcasts", href: "/broadcasts" },
-  { icon: BarChart, label: "Analytics", href: "/analytics" },
-  { icon: CreditCard, label: "Billing", href: "/billing" },
-  { icon: Settings, label: "Settings", href: "/settings" },
+  { icon: LayoutDashboard, label: "Dashboard",     href: "/dashboard" },
+  { icon: MessageSquare,   label: "Conversations", href: "/conversations" },
+  { icon: Users,           label: "Contacts",      href: "/contacts" },
+  { icon: Sparkles,        label: "Lead Scraper",  href: "/leads" },
+  { icon: BookOpen,        label: "Knowledge Base",href: "/knowledge" },
+  { icon: Megaphone,       label: "Broadcasts",    href: "/broadcasts" },
+  { icon: BarChart,        label: "Analytics",     href: "/analytics" },
+  { icon: CreditCard,      label: "Billing",       href: "/billing" },
+  { icon: Settings,        label: "Settings",      href: "/settings" },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const logoutMutation = useLogout();
   const { toast } = useToast();
 
@@ -92,13 +93,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
-      onSettled: () => {
-        logout();
-      }
+      onSettled: () => { logout(); }
     });
   };
 
   const isConnected = waStatus?.status === "connected";
+  const isAdmin = user?.role === "ADMIN";
 
   return (
     <SidebarProvider>
@@ -110,6 +110,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <span>WhatsBiz AI</span>
             </div>
           </SidebarHeader>
+
           <SidebarContent>
             <SidebarMenu>
               {navItems.map((item) => (
@@ -126,20 +127,37 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Admin-only nav item */}
+              {isAdmin && (
+                <>
+                  <div className="mx-4 my-2 border-t border-sidebar-border" />
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === "/admin"}
+                      className="flex items-center gap-3 px-4 py-2 hover:bg-red-50 hover:text-red-700 rounded-md transition-colors text-red-600"
+                    >
+                      <Link href="/admin">
+                        <Shield className="w-5 h-5" />
+                        <span className="font-semibold">Admin Panel</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
+              )}
             </SidebarMenu>
           </SidebarContent>
+
           <SidebarFooter className="p-4">
+            {/* WhatsApp status */}
             {waStatus && (
-              <div className={`mb-4 p-3 rounded-md border text-sm flex items-center gap-2 transition-colors ${
+              <div className={`mb-3 p-3 rounded-md border text-sm flex items-center gap-2 transition-colors ${
                 isConnected
                   ? "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400"
                   : "bg-destructive/10 border-destructive/20 text-destructive"
               }`}>
-                {isConnected ? (
-                  <Wifi className="w-4 h-4 shrink-0" />
-                ) : (
-                  <WifiOff className="w-4 h-4 shrink-0" />
-                )}
+                {isConnected ? <Wifi className="w-4 h-4 shrink-0" /> : <WifiOff className="w-4 h-4 shrink-0" />}
                 <div className="flex flex-col min-w-0">
                   <span className="font-semibold text-xs">
                     {isConnected ? "WhatsApp Connected" : "WhatsApp Disconnected"}
@@ -148,11 +166,26 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     <span className="text-xs opacity-70 truncate">{waStatus.phoneNumber}</span>
                   )}
                 </div>
-                {isConnected && (
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-auto shrink-0" />
+                {isConnected && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-auto shrink-0" />}
+              </div>
+            )}
+
+            {/* User info chip */}
+            {user && (
+              <div className="mb-2 px-3 py-2 rounded-md bg-muted/50 flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium truncate">{user.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                </div>
+                {isAdmin && (
+                  <Shield className="w-3.5 h-3.5 text-red-500 shrink-0" />
                 )}
               </div>
             )}
+
             <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
               <LogOut className="w-4 h-4" />
               <span>Logout</span>
