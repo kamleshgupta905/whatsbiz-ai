@@ -69,8 +69,8 @@ export default function Login() {
 
         {/* Logo — large and prominent */}
         <div className="relative">
-          <div className="bg-white/95 rounded-3xl px-6 py-4 inline-block shadow-xl shadow-black/15">
-            <img src="/logo-transparent.png" alt="WhatsBiz AI" className="h-20 w-auto object-contain" />
+          <div className="bg-white rounded-3xl p-5 inline-block shadow-2xl">
+            <img src="/icon.png" alt="WhatsBiz AI" className="h-24 w-24 object-contain" />
           </div>
         </div>
 
@@ -127,11 +127,11 @@ export default function Login() {
           className="lg:hidden flex flex-col items-center justify-center py-10 px-6"
           style={{ background: "linear-gradient(145deg, #075E54 0%, #128C7E 45%, #25D366 100%)" }}
         >
-          <div className="bg-white/95 rounded-3xl px-8 py-5 shadow-xl shadow-black/15">
+          <div className="bg-white rounded-3xl p-5 shadow-2xl">
             <img
-              src="/logo-transparent.png"
+              src="/icon.png"
               alt="WhatsBiz AI"
-              className="h-24 w-auto object-contain"
+              className="h-32 w-32 object-contain"
             />
           </div>
         </div>

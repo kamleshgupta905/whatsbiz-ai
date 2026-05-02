@@ -104,11 +104,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex h-screen w-full bg-muted/20">
         <Sidebar className="border-r bg-sidebar border-sidebar-border">
           <SidebarHeader className="px-4 py-3">
-            <img
-              src="/logo-transparent.png"
-              alt="WhatsBiz AI"
-              className="h-11 w-auto object-contain object-left"
-            />
+            <div className="flex items-center gap-2.5">
+              <img src="/icon.png" alt="WhatsBiz AI" className="h-9 w-9 object-contain" />
+              <span className="font-bold text-lg tracking-tight">
+                WhatsBiz <span className="text-primary">AI</span>
+              </span>
+            </div>
           </SidebarHeader>
 
           <SidebarContent>

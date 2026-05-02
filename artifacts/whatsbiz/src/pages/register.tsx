@@ -71,8 +71,8 @@ export default function Register() {
             className="px-8 pt-8 pb-6 flex flex-col items-center text-center"
             style={{ background: "linear-gradient(135deg, #075E54 0%, #25D366 100%)" }}
           >
-            <div className="bg-white/95 rounded-2xl px-5 py-3 mb-4 shadow-lg shadow-black/10">
-              <img src="/logo-transparent.png" alt="WhatsBiz AI" className="h-10 w-auto object-contain" />
+            <div className="bg-white rounded-2xl p-3 mb-4 shadow-xl inline-block">
+              <img src="/icon.png" alt="WhatsBiz AI" className="h-20 w-20 object-contain" />
             </div>
             <h1 className="text-2xl font-extrabold text-white tracking-tight">Start Free Trial</h1>
             <p className="text-emerald-100 text-sm mt-1">14 days free — no credit card needed</p>
