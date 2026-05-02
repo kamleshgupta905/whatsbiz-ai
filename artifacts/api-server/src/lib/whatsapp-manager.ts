@@ -9,7 +9,7 @@ import { Boom } from "@hapi/boom";
 import { db, whatsappSessionsTable, knowledgeBaseTable, contactsTable, conversationsTable, messagesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import qrcode from "qrcode";
-import { mkdir } from "fs/promises";
+import { mkdir, rm } from "fs/promises";
 import { join } from "path";
 import pino from "pino";
 import OpenAI from "openai";
@@ -89,7 +89,7 @@ export function getSession(userId: string): SessionState | undefined {
   return sessions.get(userId);
 }
 
-export async function startSession(userId: string): Promise<void> {
+export async function startSession(userId: string, forceNew = false): Promise<void> {
   const existing = sessions.get(userId);
   if (existing?.status === "connected") return;
   if (existing?.socket) {
@@ -97,6 +97,11 @@ export async function startSession(userId: string): Promise<void> {
   }
 
   const authDir = getAuthDir(userId);
+
+  // forceNew = true means user explicitly clicked "Connect" — wipe stale creds so fresh QR generates
+  if (forceNew) {
+    await rm(authDir, { recursive: true, force: true });
+  }
   await mkdir(authDir, { recursive: true });
 
   // Load AI-enabled flag from DB once; cached in memory thereafter
@@ -262,7 +267,18 @@ async function saveMessageToDB(
 
 async function createSocket(userId: string, state: SessionState, authDir: string): Promise<void> {
   const { state: authState, saveCreds } = await useMultiFileAuthState(authDir);
-  const { version } = await fetchLatestBaileysVersion();
+
+  // Fetch latest Baileys version with 8s timeout; fall back to known-good version
+  let version: [number, number, number] = [2, 3000, 1015901307];
+  try {
+    const versionResult = await Promise.race([
+      fetchLatestBaileysVersion(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("version_timeout")), 8000)),
+    ]);
+    version = versionResult.version;
+  } catch {
+    // use fallback version above
+  }
 
   const sock = makeWASocket({
     version,
@@ -287,24 +303,39 @@ async function createSocket(userId: string, state: SessionState, authDir: string
 
     if (qr) {
       try {
-        const qrBase64 = await qrcode.toDataURL(qr);
+        const qrBase64 = await qrcode.toDataURL(qr, { width: 300, margin: 2 });
         state.qrBase64 = qrBase64;
         state.status = "qr_ready";
+        console.log(`[WA] QR generated for user ${userId}`);
         await db.update(whatsappSessionsTable)
           .set({ status: "qr_ready", qrCode: qrBase64, updatedAt: new Date() })
           .where(eq(whatsappSessionsTable.userId, userId));
-      } catch {}
+      } catch (err) {
+        console.error(`[WA] QR generation failed for user ${userId}:`, err);
+      }
     }
 
     if (connection === "close") {
       clearHealthTimer(userId);
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+      console.log(`[WA] Connection closed for user ${userId}, statusCode=${statusCode}`);
       const loggedOut = statusCode === DisconnectReason.loggedOut
         || statusCode === DisconnectReason.multideviceMismatch
         || statusCode === 440;
       const shouldReconnect = !loggedOut && state.retryCount < 3;
 
-      if (shouldReconnect) {
+      if (loggedOut) {
+        // Stale / rejected credentials — wipe them and restart to get a fresh QR
+        console.log(`[WA] Logged out for user ${userId}, clearing creds and restarting for fresh QR`);
+        state.retryCount = 0;
+        state.status = "connecting";
+        state.socket = null;
+        state.qrBase64 = null;
+        state.phoneNumber = null;
+        await rm(authDir, { recursive: true, force: true });
+        await mkdir(authDir, { recursive: true });
+        await createSocket(userId, state, authDir);
+      } else if (shouldReconnect) {
         state.retryCount++;
         state.status = "connecting";
         state.phoneNumber = null;

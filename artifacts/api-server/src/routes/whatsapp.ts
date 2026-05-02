@@ -59,7 +59,8 @@ router.get("/whatsapp/qr", requireAuth, async (req, res) => {
 router.post("/whatsapp/connect", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
 
-  startSession(user.id).catch(() => {});
+  // forceNew=true wipes stale credentials so a fresh QR is always generated
+  startSession(user.id, true).catch(() => {});
 
   res.json({ status: "connecting", message: "Session started. Poll /whatsapp/qr for QR code." });
 });
