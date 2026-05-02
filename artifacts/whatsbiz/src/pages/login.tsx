@@ -80,10 +80,10 @@ export default function Login() {
         <div className="relative space-y-6">
           <div>
             <h2 className="text-4xl font-extrabold text-white leading-tight">
-              Apna business<br />autopilot par dalo
+              Put your business<br />on autopilot
             </h2>
             <p className="text-emerald-100 mt-3 text-lg leading-relaxed">
-              WhatsApp pe AI se auto-reply karo, leads capture karo, aur bulk messages safely bhejo.
+              Auto-reply with AI on WhatsApp, capture leads, and send bulk messages safely.
             </p>
           </div>
           <div className="space-y-3">
