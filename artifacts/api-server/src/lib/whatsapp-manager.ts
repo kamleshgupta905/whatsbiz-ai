@@ -30,9 +30,36 @@ interface SessionState {
 }
 
 const sessions = new Map<string, SessionState>();
+const healthTimers = new Map<string, ReturnType<typeof setInterval>>();
 
 function getAuthDir(userId: string): string {
   return join("/tmp", "wa-auth", userId);
+}
+
+function clearHealthTimer(userId: string) {
+  const t = healthTimers.get(userId);
+  if (t) { clearInterval(t); healthTimers.delete(userId); }
+}
+
+function startHealthCheck(userId: string, state: SessionState) {
+  clearHealthTimer(userId);
+  const timer = setInterval(async () => {
+    if (state.status !== "connected") { clearHealthTimer(userId); return; }
+
+    const wsState = (state.socket as unknown as { ws?: { readyState?: number } })?.ws?.readyState;
+    const isWsOpen = wsState === 1;
+
+    if (!isWsOpen) {
+      state.status = "disconnected";
+      state.socket = null;
+      state.qrBase64 = null;
+      clearHealthTimer(userId);
+      await db.update(whatsappSessionsTable)
+        .set({ status: "disconnected", phoneNumber: null, sessionData: null, qrCode: null, lastDisconnect: new Date(), updatedAt: new Date() })
+        .where(eq(whatsappSessionsTable.userId, userId));
+    }
+  }, 20_000);
+  healthTimers.set(userId, timer);
 }
 
 export function getSession(userId: string): SessionState | undefined {
@@ -240,19 +267,23 @@ async function createSocket(userId: string, state: SessionState, authDir: string
     }
 
     if (connection === "close") {
+      clearHealthTimer(userId);
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut
-        && statusCode !== DisconnectReason.multideviceMismatch
-        && state.retryCount < 3;
+      const loggedOut = statusCode === DisconnectReason.loggedOut
+        || statusCode === DisconnectReason.multideviceMismatch
+        || statusCode === 440;
+      const shouldReconnect = !loggedOut && state.retryCount < 3;
 
       if (shouldReconnect) {
         state.retryCount++;
         state.status = "connecting";
+        state.phoneNumber = null;
         await createSocket(userId, state, authDir);
       } else {
         state.status = "disconnected";
         state.socket = null;
         state.qrBase64 = null;
+        state.phoneNumber = null;
         await db.update(whatsappSessionsTable)
           .set({ status: "disconnected", phoneNumber: null, sessionData: null, qrCode: null, lastDisconnect: new Date(), updatedAt: new Date() })
           .where(eq(whatsappSessionsTable.userId, userId));
@@ -265,6 +296,7 @@ async function createSocket(userId: string, state: SessionState, authDir: string
       state.phoneNumber = phone;
       state.qrBase64 = null;
       state.retryCount = 0;
+      startHealthCheck(userId, state);
       await db.update(whatsappSessionsTable)
         .set({ status: "connected", phoneNumber: phone ? `+${phone}` : null, qrCode: null, lastConnected: new Date(), updatedAt: new Date() })
         .where(eq(whatsappSessionsTable.userId, userId));
@@ -310,6 +342,7 @@ async function createSocket(userId: string, state: SessionState, authDir: string
 }
 
 export async function disconnectSession(userId: string): Promise<void> {
+  clearHealthTimer(userId);
   const session = sessions.get(userId);
   if (session?.socket) {
     try { await session.socket.logout(); } catch {}
