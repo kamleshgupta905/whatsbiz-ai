@@ -1,23 +1,80 @@
-import { 
-  useGetAnalyticsSummary, 
+import { useState, useEffect } from "react";
+import {
+  useGetAnalyticsSummary,
   useGetWhatsappStatus,
-  useGetSubscription 
+  getGetWhatsappStatusQueryKey,
+  useGetSubscription,
+  useGetMessagesChart,
+  useConnectWhatsapp,
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Users, Zap, Clock, AlertTriangle, ExternalLink } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { MessageSquare, Users, Zap, Clock, AlertTriangle, ExternalLink, CheckCircle2, Smartphone } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
-import { useGetMessagesChart } from "@workspace/api-client-react";
+import { QRCodeSVG } from "qrcode.react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {
+  const queryClient = useQueryClient();
+  const [showQRDialog, setShowQRDialog] = useState(false);
+  const [qrValue, setQrValue] = useState<string | null>(null);
+  const [justConnected, setJustConnected] = useState(false);
+
   const { data: analytics, isLoading: isAnalyticsLoading } = useGetAnalyticsSummary(undefined, { query: { queryKey: ["analytics", "today"] } });
-  const { data: waStatus } = useGetWhatsappStatus({ query: { queryKey: ["waStatus"] } });
+  const { data: waStatus, refetch: refetchWa } = useGetWhatsappStatus({
+    query: {
+      queryKey: getGetWhatsappStatusQueryKey(),
+      refetchInterval: showQRDialog && !justConnected ? 4000 : false,
+    }
+  });
   const { data: subscription } = useGetSubscription({ query: { queryKey: ["subscription"] } });
   const { data: chartData } = useGetMessagesChart(undefined, { query: { queryKey: ["chartData"] } });
 
+  const connectWa = useConnectWhatsapp();
+
+  useEffect(() => {
+    if (waStatus?.status === "connected" && showQRDialog && qrValue) {
+      setJustConnected(true);
+    }
+  }, [waStatus, showQRDialog, qrValue]);
+
+  const handleOpenConnect = () => {
+    setJustConnected(false);
+    setQrValue(null);
+    setShowQRDialog(true);
+    connectWa.mutate(undefined, {
+      onSuccess: (res) => {
+        if (res.qrCode) {
+          setQrValue(`WHATSBIZ-WA-${Date.now()}`);
+        }
+        queryClient.invalidateQueries({ queryKey: getGetWhatsappStatusQueryKey() });
+      }
+    });
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setShowQRDialog(open);
+    if (!open) {
+      setQrValue(null);
+      setJustConnected(false);
+      refetchWa();
+    }
+  };
+
   if (isAnalyticsLoading) {
-    return <div>Loading dashboard...</div>;
+    return (
+      <div className="h-64 flex items-center justify-center text-muted-foreground">
+        Loading dashboard...
+      </div>
+    );
   }
 
   return (
@@ -50,9 +107,9 @@ export default function Dashboard() {
               <p className="text-sm text-destructive/80">Connect your number to start receiving messages.</p>
             </div>
           </div>
-          <Link href="/settings">
-            <Button variant="destructive">Connect Now</Button>
-          </Link>
+          <Button variant="destructive" onClick={handleOpenConnect} disabled={connectWa.isPending} data-testid="button-connect-whatsapp">
+            {connectWa.isPending ? "Generating QR..." : "Connect Now"}
+          </Button>
         </div>
       )}
 
@@ -115,7 +172,7 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                  <RechartsTooltip 
+                  <RechartsTooltip
                     contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                   />
                   <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
@@ -162,9 +219,70 @@ export default function Dashboard() {
                 <ExternalLink className="w-4 h-4 text-muted-foreground" />
               </Button>
             </Link>
+            {waStatus?.status !== 'connected' && (
+              <Button className="w-full justify-between h-auto py-3" onClick={handleOpenConnect} disabled={connectWa.isPending}>
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4" />
+                  <span>Connect WhatsApp</span>
+                </div>
+                <ExternalLink className="w-4 h-4 opacity-70" />
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showQRDialog} onOpenChange={handleDialogClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Smartphone className="w-5 h-5 text-primary" />
+              WhatsApp Connect karo
+            </DialogTitle>
+            <DialogDescription>
+              Phone mein WhatsApp kholo → Menu (3 dots) → Linked Devices → Link a Device → QR scan karo.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center gap-4 py-4">
+            {justConnected ? (
+              <div className="text-center space-y-3 py-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-8 h-8 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-foreground">Connected!</h3>
+                  <p className="text-sm text-muted-foreground">WhatsApp successfully connect ho gaya. AI replies shuru ho gayi hain.</p>
+                </div>
+                <Button className="w-full" onClick={() => handleDialogClose(false)}>
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <>
+                {qrValue ? (
+                  <div className="bg-white p-4 rounded-2xl border-2 border-border shadow-sm">
+                    <QRCodeSVG value={qrValue} size={200} level="M" includeMargin={false} />
+                  </div>
+                ) : (
+                  <div className="w-[200px] h-[200px] bg-muted animate-pulse rounded-2xl flex items-center justify-center">
+                    <span className="text-muted-foreground text-sm">Generating QR...</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse inline-block" />
+                  Scan hone ka wait kar raha hai...
+                </div>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  QR code 30 seconds mein expire hota hai. Agar expire ho jaye to dialog band karke dobara try karo.
+                </p>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
