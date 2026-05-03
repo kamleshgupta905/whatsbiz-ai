@@ -198,6 +198,11 @@
   }
 }
 
+/* Smooth scroll for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
 /* Hide scrollbar globally */
 * {
   scrollbar-width: none;
