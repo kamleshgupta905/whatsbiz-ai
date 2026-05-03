@@ -122,8 +122,8 @@ export default function Landing() {
       <header className="border-b bg-background">
         <div className="container mx-auto px-4 sm:px-6 flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl sm:text-2xl text-primary anim-slide-r">
-            <img src="/icon.png" alt="WhatsBiz AI" className="h-20 w-20 sm:h-28 sm:w-28 object-contain" />
-            <span>WhatsBiz AI</span>
+            <img src="/icon.png" alt="WhatsBiz AI" className="h-10 w-10 object-contain" />
+            <span className="whitespace-nowrap">WhatsBiz AI</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-6 lg:gap-8">
