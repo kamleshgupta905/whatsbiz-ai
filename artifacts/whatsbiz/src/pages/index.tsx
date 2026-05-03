@@ -7,7 +7,45 @@ import {
   Phone, Mail, MapPin, Menu, X,
 } from "lucide-react";
 
-/* ── Intersection-observer hook ── */
+/* ─────────────────────────────────────────
+   Hook: count up from 0 → target on scroll
+───────────────────────────────────────── */
+function useCountUp(target: number, duration = 2000) {
+  const [value, setValue] = useState(0);
+  const [started, setStarted] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setStarted(true); obs.disconnect(); } },
+      { threshold: 0.5 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!started) return;
+    let startTime: number | null = null;
+    const tick = (ts: number) => {
+      if (!startTime) startTime = ts;
+      const progress = Math.min((ts - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 4); // easeOutQuart
+      setValue(Math.floor(eased * target));
+      if (progress < 1) requestAnimationFrame(tick);
+      else setValue(target);
+    };
+    requestAnimationFrame(tick);
+  }, [started, target, duration]);
+
+  return { value, ref };
+}
+
+/* ─────────────────────────────────────────
+   Hook: reveal on scroll (IntersectionObserver)
+───────────────────────────────────────── */
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -23,7 +61,24 @@ function useReveal() {
   return ref;
 }
 
-/* ── Nav links ── */
+/* ─────────────────────────────────────────
+   Component: single animated stat
+───────────────────────────────────────── */
+function AnimatedStat({ target, suffix, label }: { target: number; suffix: string; label: string }) {
+  const { value, ref } = useCountUp(target, 2000);
+  return (
+    <div className="text-center">
+      <p className="text-3xl sm:text-4xl font-extrabold tabular-nums tracking-tight">
+        <span ref={ref}>{value}</span>{suffix}
+      </p>
+      <p className="text-primary-foreground/80 text-sm sm:text-base mt-1 font-medium">{label}</p>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   Constants
+───────────────────────────────────────── */
 const navLinks = [
   { label: "Home",     href: "#home" },
   { label: "Features", href: "#features" },
@@ -32,48 +87,45 @@ const navLinks = [
   { label: "Contact",  href: "#contact" },
 ];
 
-/* ── Feature cards ── */
 const features = [
-  { icon: Zap,          title: "Instant Setup",       desc: "Upload your PDF catalog or FAQ, scan a QR code, and your AI is ready to reply to customers in minutes." },
-  { icon: Clock,        title: "24/7 AI Support",     desc: "Never miss a lead. The AI replies instantly in Hinglish or English, even while you sleep." },
-  { icon: ShieldCheck,  title: "Human Takeover",      desc: "Jump into any conversation with one click. The AI knows when to hand off complex queries to you." },
-  { icon: MessageSquare,title: "Bulk Broadcasts",     desc: "Send promotional messages to thousands of contacts safely with built-in anti-spam limits." },
-  { icon: BarChart2,    title: "Analytics Dashboard", desc: "Track reply rates, lead conversions, and AI performance with real-time insights." },
-  { icon: Users,        title: "CRM & Lead Scraper",  desc: "Auto-capture leads from conversations and find new prospects with our built-in lead scraper." },
+  { icon: Zap,           title: "Instant Setup",       desc: "Upload your PDF catalog or FAQ, scan a QR code, and your AI is ready to reply to customers in minutes." },
+  { icon: Clock,         title: "24/7 AI Support",     desc: "Never miss a lead. The AI replies instantly in Hinglish or English, even while you sleep." },
+  { icon: ShieldCheck,   title: "Human Takeover",      desc: "Jump into any conversation with one click. The AI knows when to hand off complex queries to you." },
+  { icon: MessageSquare, title: "Bulk Broadcasts",     desc: "Send promotional messages to thousands of contacts safely with built-in anti-spam limits." },
+  { icon: BarChart2,     title: "Analytics Dashboard", desc: "Track reply rates, lead conversions, and AI performance with real-time insights." },
+  { icon: Users,         title: "CRM & Lead Scraper",  desc: "Auto-capture leads from conversations and find new prospects with our built-in lead scraper." },
 ];
 
-/* ── Testimonials ── */
 const testimonials = [
-  { name: "Ramesh Verma",  biz: "Verma Electronics, Delhi",      text: "Our customer queries dropped by 70% after setting up WhatsBiz AI. The AI handles everything in Hinglish and customers love it!" },
-  { name: "Priya Sharma",  biz: "Sharma Saree House, Jaipur",    text: "Maine apna catalog upload kiya aur 5 minute mein AI ready tha. Ab raat ko bhi orders aate hain bina kisi effort ke!" },
+  { name: "Ramesh Verma",  biz: "Verma Electronics, Delhi",         text: "Our customer queries dropped by 70% after setting up WhatsBiz AI. The AI handles everything in Hinglish and customers love it!" },
+  { name: "Priya Sharma",  biz: "Sharma Saree House, Jaipur",       text: "Maine apna catalog upload kiya aur 5 minute mein AI ready tha. Ab raat ko bhi orders aate hain bina kisi effort ke!" },
   { name: "Arjun Patel",   biz: "Patel Tours & Travels, Ahmedabad", text: "Lead scraper ne humara business double kar diya. WhatsApp pe automatically follow-up ho jaata hai, koi lead nahi jaata!" },
 ];
 
+/* ─────────────────────────────────────────
+   Page
+───────────────────────────────────────── */
 export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleMenu = useCallback(() => setMenuOpen(v => !v), []);
 
-  /* section refs */
-  const heroRef       = useReveal();
-  const statsRef      = useReveal();
-  const featuresRef   = useReveal();
-  const pricingRef    = useReveal();
-  const reviewsRef    = useReveal();
-  const ctaRef        = useReveal();
+  const heroRef     = useReveal();
+  const featuresRef = useReveal();
+  const pricingRef  = useReveal();
+  const reviewsRef  = useReveal();
+  const ctaRef      = useReveal();
 
   return (
     <div className="min-h-screen bg-background flex flex-col" id="home">
 
-      {/* ───────── HEADER ───────── */}
+      {/* ───── HEADER ───── */}
       <header className="border-b bg-background">
         <div className="container mx-auto px-4 sm:px-6 flex items-center justify-between">
-          {/* Brand */}
           <div className="flex items-center gap-2 font-bold text-xl sm:text-2xl text-primary anim-slide-r">
             <img src="/icon.png" alt="WhatsBiz AI" className="h-20 w-20 sm:h-28 sm:w-28 object-contain" />
             <span>WhatsBiz AI</span>
           </div>
 
-          {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-6 lg:gap-8">
             {navLinks.map((n, i) => (
               <a key={n.label} href={n.href}
@@ -83,19 +135,16 @@ export default function Landing() {
             ))}
           </nav>
 
-          {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3 anim-fade-in delay-600">
             <Link href="/login"><Button variant="ghost" className="font-semibold text-base">Login</Button></Link>
             <Link href="/register"><Button className="font-semibold text-base px-5">Start Free Trial</Button></Link>
           </div>
 
-          {/* Mobile hamburger */}
           <button onClick={toggleMenu} className="md:hidden p-2 rounded-md hover:bg-muted transition-colors" aria-label="Menu">
             {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
 
-        {/* Mobile drawer */}
         {menuOpen && (
           <div className="md:hidden border-t bg-background px-4 py-4 flex flex-col gap-3 anim-fade-up">
             {navLinks.map(n => (
@@ -114,7 +163,7 @@ export default function Landing() {
 
       <main className="flex-1">
 
-        {/* ───────── HERO ───────── */}
+        {/* ───── HERO ───── */}
         <section className="py-12 md:py-20 container mx-auto px-4 sm:px-6 text-center">
           <div ref={heroRef} className="reveal anim-fade-up">
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm font-semibold px-4 py-1.5 rounded-full mb-6">
@@ -136,26 +185,19 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ───────── STATS ───────── */}
+        {/* ───── STATS (animated counters) ───── */}
         <section className="bg-primary py-10">
-          <div ref={statsRef} className="reveal anim-count-up container mx-auto px-4 sm:px-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center text-primary-foreground">
-              {[
-                { num: "500+",  label: "Businesses" },
-                { num: "10L+",  label: "AI Replies Sent" },
-                { num: "98%",   label: "Customer Satisfaction" },
-                { num: "5 min", label: "Avg Setup Time" },
-              ].map((s, i) => (
-                <div key={s.label} className={`anim-count-up delay-${i * 100 + 100}`}>
-                  <p className="text-3xl sm:text-4xl font-extrabold">{s.num}</p>
-                  <p className="text-primary-foreground/80 text-sm sm:text-base mt-1 font-medium">{s.label}</p>
-                </div>
-              ))}
+          <div className="container mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <AnimatedStat target={500}  suffix="+"   label="Businesses" />
+              <AnimatedStat target={10}   suffix="L+"  label="AI Replies Sent" />
+              <AnimatedStat target={98}   suffix="%"   label="Customer Satisfaction" />
+              <AnimatedStat target={5}    suffix=" min" label="Avg Setup Time" />
             </div>
           </div>
         </section>
 
-        {/* ───────── FEATURES ───────── */}
+        {/* ───── FEATURES ───── */}
         <section className="bg-card py-16 md:py-20 border-y" id="features">
           <div className="container mx-auto px-4 sm:px-6">
             <div ref={featuresRef} className="reveal anim-fade-up text-center mb-12">
@@ -177,14 +219,13 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ───────── PRICING ───────── */}
+        {/* ───── PRICING ───── */}
         <section className="py-16 md:py-20 container mx-auto px-4 sm:px-6" id="pricing">
           <div ref={pricingRef} className="reveal anim-fade-up text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-extrabold mb-3">Simple, transparent pricing</h2>
             <p className="text-lg text-muted-foreground">No hidden charges. Cancel anytime.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-5xl mx-auto">
-            {/* Starter */}
             <div className="reveal anim-fade-up delay-100 border rounded-2xl p-6 md:p-8 bg-card shadow-sm">
               <h3 className="text-2xl font-bold mb-1">Starter</h3>
               <p className="text-muted-foreground mb-5">Perfect for small shops</p>
@@ -196,7 +237,6 @@ export default function Landing() {
               </ul>
               <Link href="/register"><Button variant="outline" className="w-full text-base h-11">Get Started</Button></Link>
             </div>
-            {/* Pro */}
             <div className="reveal anim-fade-up delay-200 border-2 border-primary rounded-2xl p-6 md:p-8 bg-primary/5 shadow-lg relative">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-bold whitespace-nowrap">Most Popular</div>
               <h3 className="text-2xl font-bold mb-1">Pro</h3>
@@ -209,7 +249,6 @@ export default function Landing() {
               </ul>
               <Link href="/register"><Button className="w-full text-base h-11">Get Pro</Button></Link>
             </div>
-            {/* Business */}
             <div className="reveal anim-fade-up delay-300 border rounded-2xl p-6 md:p-8 bg-card shadow-sm">
               <h3 className="text-2xl font-bold mb-1">Business</h3>
               <p className="text-muted-foreground mb-5">For enterprises & agencies</p>
@@ -224,7 +263,7 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ───────── TESTIMONIALS ───────── */}
+        {/* ───── TESTIMONIALS ───── */}
         <section className="bg-card border-y py-16 md:py-20" id="reviews">
           <div className="container mx-auto px-4 sm:px-6">
             <div ref={reviewsRef} className="reveal anim-fade-up text-center mb-12">
@@ -248,7 +287,7 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ───────── CTA BANNER ───────── */}
+        {/* ───── CTA BANNER ───── */}
         <section className="bg-primary py-14 md:py-20 text-center text-primary-foreground">
           <div ref={ctaRef} className="reveal anim-scale-in container mx-auto px-4 sm:px-6">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-4">Ready to automate your WhatsApp?</h2>
@@ -262,11 +301,10 @@ export default function Landing() {
         </section>
       </main>
 
-      {/* ───────── FOOTER ───────── */}
+      {/* ───── FOOTER ───── */}
       <footer className="bg-foreground text-background" id="contact">
         <div className="container mx-auto px-4 sm:px-6 py-12 md:py-16">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-10">
-            {/* Brand */}
             <div className="sm:col-span-2">
               <div className="flex items-center gap-3 mb-4">
                 <img src="/icon.png" alt="WhatsBiz AI" className="h-12 w-12 object-contain"
@@ -282,25 +320,15 @@ export default function Landing() {
                 <div className="flex items-center gap-2 text-base"><MapPin className="w-4 h-4 shrink-0" /><span>India 🇮🇳</span></div>
               </div>
             </div>
-            {/* Product */}
             <div>
               <h4 className="font-bold text-lg mb-5 text-background">Product</h4>
               <ul className="space-y-3">
-                {[
-                  { label: "Features",         href: "#features" },
-                  { label: "Pricing",           href: "#pricing" },
-                  { label: "Start Free Trial",  href: "/register", isRoute: true },
-                  { label: "Login",             href: "/login",    isRoute: true },
-                ].map(l => (
-                  <li key={l.label}>
-                    {l.isRoute
-                      ? <Link href={l.href} className="text-background/70 hover:text-amber-400 transition-colors text-base">{l.label}</Link>
-                      : <a href={l.href} className="text-background/70 hover:text-amber-400 transition-colors text-base">{l.label}</a>}
-                  </li>
-                ))}
+                <li><a href="#features" className="text-background/70 hover:text-amber-400 transition-colors text-base">Features</a></li>
+                <li><a href="#pricing"  className="text-background/70 hover:text-amber-400 transition-colors text-base">Pricing</a></li>
+                <li><Link href="/register" className="text-background/70 hover:text-amber-400 transition-colors text-base">Start Free Trial</Link></li>
+                <li><Link href="/login"    className="text-background/70 hover:text-amber-400 transition-colors text-base">Login</Link></li>
               </ul>
             </div>
-            {/* Support */}
             <div>
               <h4 className="font-bold text-lg mb-5 text-background">Support</h4>
               <ul className="space-y-3">
@@ -310,7 +338,6 @@ export default function Landing() {
               </ul>
             </div>
           </div>
-
           <div className="border-t border-background/20 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-background/60 text-base">
             <p>© {new Date().getFullYear()} WhatsBiz AI. All rights reserved.</p>
             <p>Built with ❤️ for Bharat 🇮🇳</p>
