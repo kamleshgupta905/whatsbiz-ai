@@ -1,8 +1,23 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { db, whatsappSessionsTable } from "@workspace/db";
-import { eq, ne } from "drizzle-orm";
+import { ne } from "drizzle-orm";
 import { startSession } from "./lib/whatsapp-manager";
+import { readdir } from "fs/promises";
+import { join } from "path";
+
+function getAuthDir(userId: string): string {
+  return join(process.cwd(), "..", "..", ".wa-auth", userId);
+}
+
+async function hasCredFiles(userId: string): Promise<boolean> {
+  try {
+    const files = await readdir(getAuthDir(userId));
+    return files.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 const rawPort = process.env["PORT"];
 
@@ -26,7 +41,7 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
 
-  // Auto-reconnect users who were previously connected/connecting
+  // Auto-reconnect users who were previously connected (only if cred files exist)
   void (async () => {
     try {
       const activeSessions = await db
@@ -35,8 +50,12 @@ app.listen(port, (err) => {
         .where(ne(whatsappSessionsTable.status, "disconnected"));
 
       for (const { userId } of activeSessions) {
+        const hasCreds = await hasCredFiles(userId);
+        if (!hasCreds) {
+          console.log(`[WA] No saved creds for ${userId} — skipping auto-reconnect (needs fresh QR)`);
+          continue;
+        }
         console.log(`[WA] Auto-reconnecting user ${userId} on startup`);
-        // forceNew=false — use saved credentials, no QR needed
         startSession(userId, false).catch((err) => {
           console.error(`[WA] Auto-reconnect failed for ${userId}:`, err);
         });

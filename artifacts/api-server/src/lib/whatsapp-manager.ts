@@ -45,7 +45,9 @@ const kbCache = new Map<string, KBCache>();
 const KB_TTL_MS = 120_000; // 2 minutes
 
 function getAuthDir(userId: string): string {
-  return join("/tmp", "wa-auth", userId);
+  // Use persistent workspace dir so creds survive server restarts
+  // /tmp is wiped on every restart — workspace dir persists
+  return join(process.cwd(), "..", "..", ".wa-auth", userId);
 }
 
 function clearHealthTimer(userId: string) {
