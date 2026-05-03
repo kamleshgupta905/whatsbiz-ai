@@ -120,22 +120,22 @@ export default function Landing() {
 
       {/* ───── HEADER ───── */}
       <header className="border-b bg-background">
-        <div className="container mx-auto px-4 sm:px-6 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-xl sm:text-2xl text-primary anim-slide-r">
-            <img src="/icon.png" alt="WhatsBiz AI" className="h-10 w-10 object-contain" />
+        <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 font-bold text-xl sm:text-2xl text-primary shrink-0">
+            <img src="/icon.png" alt="WhatsBiz AI" className="h-12 w-12 object-contain" />
             <span className="whitespace-nowrap">WhatsBiz AI</span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-6 lg:gap-8">
-            {navLinks.map((n, i) => (
+          <nav className="hidden md:flex items-center gap-5 lg:gap-8">
+            {navLinks.map((n) => (
               <a key={n.label} href={n.href}
-                className={`text-base font-medium text-foreground hover:text-primary transition-colors anim-fade-in delay-${(i + 1) * 100}`}>
+                className="text-base font-medium text-foreground hover:text-primary transition-colors">
                 {n.label}
               </a>
             ))}
           </nav>
 
-          <div className="hidden md:flex items-center gap-3 anim-fade-in delay-600">
+          <div className="hidden md:flex items-center gap-3 shrink-0">
             <Link href="/login"><Button variant="ghost" className="font-semibold text-base">Login</Button></Link>
             <Link href="/register"><Button className="font-semibold text-base px-5">Start Free Trial</Button></Link>
           </div>
