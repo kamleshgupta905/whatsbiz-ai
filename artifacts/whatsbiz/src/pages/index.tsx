@@ -321,10 +321,13 @@ export default function Landing() {
               </div>
             </div>
             <div>
-              <h4 className="font-bold text-lg mb-5 text-background">Product</h4>
+              <h4 className="font-bold text-lg mb-5 text-background">Pages</h4>
               <ul className="space-y-3">
-                <li><a href="#features" className="text-background/70 hover:text-amber-400 transition-colors text-base">Features</a></li>
-                <li><a href="#pricing"  className="text-background/70 hover:text-amber-400 transition-colors text-base">Pricing</a></li>
+                {navLinks.map(n => (
+                  <li key={n.label}>
+                    <a href={n.href} className="text-background/70 hover:text-amber-400 transition-colors text-base">{n.label}</a>
+                  </li>
+                ))}
                 <li><Link href="/register" className="text-background/70 hover:text-amber-400 transition-colors text-base">Start Free Trial</Link></li>
                 <li><Link href="/login"    className="text-background/70 hover:text-amber-400 transition-colors text-base">Login</Link></li>
               </ul>
