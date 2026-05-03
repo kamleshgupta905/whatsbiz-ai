@@ -122,7 +122,7 @@ export default function Landing() {
       <header className="border-b bg-background">
         <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 font-bold text-xl sm:text-2xl text-primary shrink-0">
-            <img src="/icon.png" alt="WhatsBiz AI" className="h-12 w-12 object-contain" />
+            <img src="/icon.png" alt="WhatsBiz AI" className="h-24 w-24 object-contain" />
             <span className="whitespace-nowrap">WhatsBiz AI</span>
           </div>
 
