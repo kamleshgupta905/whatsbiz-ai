@@ -315,8 +315,8 @@ export default function Landing() {
                 AI-powered WhatsApp automation for Indian small businesses. Automate replies, capture leads, and grow — all from one dashboard.
               </p>
               <div className="space-y-2 text-background/70">
-                <div className="flex items-center gap-2 text-base"><Mail className="w-4 h-4 shrink-0" /><span>support@whatsbiz.ai</span></div>
-                <div className="flex items-center gap-2 text-base"><Phone className="w-4 h-4 shrink-0" /><span>+91 98765 43210</span></div>
+                <div className="flex items-center gap-2 text-base"><Mail className="w-4 h-4 shrink-0" /><span>kamleshg9569@gmail.com</span></div>
+                <div className="flex items-center gap-2 text-base"><Phone className="w-4 h-4 shrink-0" /><span>+91 93155 15700</span></div>
                 <div className="flex items-center gap-2 text-base"><MapPin className="w-4 h-4 shrink-0" /><span>India 🇮🇳</span></div>
               </div>
             </div>
