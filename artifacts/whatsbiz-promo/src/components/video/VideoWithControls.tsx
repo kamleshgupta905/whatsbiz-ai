@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, Repeat } from 'lucide-react';
+import { ChevronDown, ChevronUp, Repeat, Volume2, VolumeX } from 'lucide-react';
 import VideoTemplate, { SCENE_DURATIONS } from './VideoTemplate';
 import { useSceneControls } from './useSceneControls';
 
@@ -9,11 +9,13 @@ interface ControlBarProps {
   visible: boolean;
   collapsed: boolean;
   locked: boolean;
+  voiceoverEnabled: boolean;
   sceneKeys: string[];
   activeIndex: number;
   activeDuration: number;
   tick: number;
   onToggleLock: () => void;
+  onToggleVoiceover: () => void;
   onJumpTo: (index: number) => void;
   onToggleCollapsed: () => void;
 }
@@ -65,8 +67,8 @@ function ProgressSegments({
 }
 
 function ControlBar({
-  visible, collapsed, locked, sceneKeys, activeIndex, activeDuration, tick,
-  onToggleLock, onJumpTo, onToggleCollapsed,
+  visible, collapsed, locked, voiceoverEnabled, sceneKeys, activeIndex, activeDuration, tick,
+  onToggleLock, onToggleVoiceover, onJumpTo, onToggleCollapsed,
 }: ControlBarProps) {
   return (
     <div
@@ -89,6 +91,20 @@ function ControlBar({
         aria-pressed={locked}
       >
         <Repeat className="w-8 h-8" />
+      </button>
+
+      <button
+        onClick={onToggleVoiceover}
+        className={`w-14 h-14 flex items-center justify-center transition-colors rounded-lg shrink-0 ${
+          voiceoverEnabled
+            ? 'text-[#25D366] bg-[#25D366]/15 hover:bg-[#25D366]/25'
+            : 'text-white/60 hover:text-white hover:bg-white/10'
+        }`}
+        title={voiceoverEnabled ? 'Voiceover: on' : 'Voiceover: off'}
+        aria-label={voiceoverEnabled ? 'Voiceover: on' : 'Voiceover: off'}
+        aria-pressed={voiceoverEnabled}
+      >
+        {voiceoverEnabled ? <Volume2 className="w-8 h-8" /> : <VolumeX className="w-8 h-8" />}
       </button>
 
       <div className="w-px self-stretch bg-white/15" aria-hidden="true" />
@@ -125,6 +141,16 @@ export default function VideoWithControls() {
     sceneKeys, activeIndex, locked, mountKey, tick,
     durations, activeDuration, onSceneChange, jumpTo, toggleLock,
   } = useSceneControls(SCENE_DURATIONS);
+
+  const [voiceoverEnabled, setVoiceoverEnabled] = useState(false);
+  const toggleVoiceover = useCallback(() => {
+    setVoiceoverEnabled(v => {
+      if (v && typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      return !v;
+    });
+  }, []);
 
   const sensorRef = useRef<HTMLDivElement | null>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -170,6 +196,7 @@ export default function VideoWithControls() {
         durations={durations}
         loop
         onSceneChange={onSceneChange}
+        voiceoverEnabled={voiceoverEnabled}
       />
       <div
         ref={sensorRef}
@@ -184,11 +211,13 @@ export default function VideoWithControls() {
           visible={barVisible}
           collapsed={collapsed}
           locked={locked}
+          voiceoverEnabled={voiceoverEnabled}
           sceneKeys={sceneKeys}
           activeIndex={activeIndex}
           activeDuration={activeDuration}
           tick={tick}
           onToggleLock={toggleLock}
+          onToggleVoiceover={toggleVoiceover}
           onJumpTo={jumpTo}
           onToggleCollapsed={handleToggleCollapsed}
         />
