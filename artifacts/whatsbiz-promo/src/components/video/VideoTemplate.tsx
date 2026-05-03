@@ -10,12 +10,12 @@ import { Scene5 } from './video_scenes/Scene5';
 import { Scene6 } from './video_scenes/Scene6';
 
 export const SCENE_DURATIONS = {
-  hook: 8000,
-  intro: 7000,
-  aiReply: 9000,
-  broadcast: 8000,
-  dashboard: 9000,
-  closing: 9000,
+  hook: 10000,
+  intro: 9000,
+  aiReply: 12000,
+  broadcast: 11000,
+  dashboard: 12000,
+  closing: 12000,
 };
 
 const SCENE_COMPONENTS: Record<string, React.ComponentType> = {

@@ -7,125 +7,145 @@ export function Scene4() {
   useEffect(() => {
     const timers = [
       setTimeout(() => setPhase(1), 300),
-      setTimeout(() => setPhase(2), 1200),
-      setTimeout(() => setPhase(3), 2200),
-      setTimeout(() => setPhase(4), 3200),
+      setTimeout(() => setPhase(2), 2200),
+      setTimeout(() => setPhase(3), 3800),
+      setTimeout(() => setPhase(4), 5500),
+      setTimeout(() => setPhase(5), 7000),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
 
-  const recipients = [
-    { name: 'Raj Kumar', avatar: 'RK', delay: 0 },
-    { name: 'Priya S.', avatar: 'PS', delay: 0.1 },
-    { name: 'Amit T.', avatar: 'AT', delay: 0.15 },
-    { name: 'Sunita D.', avatar: 'SD', delay: 0.2 },
-    { name: 'Vikram M.', avatar: 'VM', delay: 0.25 },
-    { name: 'Meera G.', avatar: 'MG', delay: 0.3 },
-    { name: 'Rohit B.', avatar: 'RB', delay: 0.35 },
-    { name: 'Kavya P.', avatar: 'KP', delay: 0.4 },
+  const contacts = [
+    { name: 'Raj Sharma', avatar: 'RS', delay: 0 },
+    { name: 'Priya Mehta', avatar: 'PM', delay: 0.08 },
+    { name: 'Amit Patel', avatar: 'AP', delay: 0.16 },
+    { name: 'Sunita Devi', avatar: 'SD', delay: 0.24 },
+    { name: 'Vikram Rao', avatar: 'VR', delay: 0.32 },
+    { name: 'Kavya Singh', avatar: 'KS', delay: 0.4 },
   ];
+
+  const flyingDots = Array.from({ length: 14 });
 
   return (
     <motion.div
-      className="absolute inset-0 bg-[#0A1628] flex items-center justify-between px-[8vw] overflow-hidden"
-      initial={{ opacity: 0, y: 60 }}
+      className="absolute inset-0 flex items-center overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #060f1e 0%, #100a05 50%, #060f1e 100%)' }}
+      initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      exit={{ opacity: 0, y: -40 }}
+      transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
     >
       <motion.div
-        className="absolute right-[5%] top-[20%] w-[40vw] h-[40vw] rounded-full bg-[#FF6B35] opacity-5 blur-[120px]"
-        animate={{ scale: [1, 1.15, 1], x: [0, 20, 0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute left-[5%] bottom-[10%] w-[30vw] h-[30vw] rounded-full bg-[#25D366] opacity-8 blur-[100px]"
-        animate={{ scale: [1, 1.2, 1] }}
+        className="absolute right-[10%] top-[20%] w-[35vw] h-[35vw] rounded-full bg-[#FF6B35] blur-[130px] pointer-events-none"
+        animate={{ opacity: [0.05, 0.09, 0.05], scale: [1, 1.1, 1] }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      <div className="w-[42%] relative z-10">
+      {phase >= 3 && flyingDots.map((_, i) => (
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-          transition={{ duration: 0.7 }}
-        >
-          <div className="text-[#FF6B35] text-[1.2vw] font-bold tracking-widest uppercase mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+          key={i}
+          className="absolute w-2 h-2 rounded-full bg-[#25D366] pointer-events-none"
+          style={{ left: '36%', top: '50%' }}
+          initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
+          animate={{ opacity: [0, 1, 0], scale: [0, 1, 0], x: `${(Math.cos((i / flyingDots.length) * Math.PI * 2) * 35)}vw`, y: `${(Math.sin((i / flyingDots.length) * Math.PI * 2) * 25)}vh` }}
+          transition={{ duration: 1.2, delay: (i / flyingDots.length) * 0.6, ease: [0.16, 1, 0.3, 1] }}
+        />
+      ))}
+
+      <div className="flex w-full px-[7vw] gap-[4vw] items-center">
+        <div className="w-[40%] shrink-0">
+          <motion.div
+            className="text-[#FF6B35] text-[1vw] font-bold tracking-[0.2em] uppercase mb-3"
+            style={{ fontFamily: 'var(--font-display)' }}
+            initial={{ opacity: 0, x: -20 }}
+            animate={phase >= 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
+            transition={{ duration: 0.5 }}
+          >
             Bulk Broadcast
-          </div>
-          <h2 className="text-[3.8vw] leading-tight font-extrabold text-white mb-6" style={{ fontFamily: 'var(--font-display)' }}>
-            Ek Click Mein<br />
-            <span className="text-gradient-orange">Hazaron Tak Pahuncho</span>
-          </h2>
-          <p className="text-[1.6vw] text-[#94A3B8] leading-relaxed">
-            Send promotions to thousands of customers instantly — no one missed.
-          </p>
-        </motion.div>
+          </motion.div>
+          <motion.h2
+            className="text-[3.8vw] font-black leading-tight text-white mb-4"
+            style={{ fontFamily: 'var(--font-display)' }}
+            initial={{ opacity: 0, y: 24 }}
+            animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+          >
+            Reach Thousands<br />
+            <span className="text-gradient-orange">In One Click</span>
+          </motion.h2>
+          <motion.p
+            className="text-[1.6vw] text-[#94A3B8] leading-relaxed"
+            style={{ fontFamily: 'var(--font-body)' }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            Flash sales, Diwali offers, product launches — everyone gets your message instantly.
+          </motion.p>
 
-        <motion.div
-          className="mt-[4vh] flex items-center gap-[2vw]"
-          initial={{ opacity: 0, y: 20 }}
-          animate={phase >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className="bg-[#FF6B35]/20 border border-[#FF6B35]/40 rounded-2xl px-[2vw] py-[1vw]">
-            <div className="text-[3vw] font-black text-[#FF6B35]">10,000+</div>
-            <div className="text-[1vw] text-[#94A3B8]">Messages Sent</div>
-          </div>
-          <div className="bg-[#25D366]/10 border border-[#25D366]/30 rounded-2xl px-[2vw] py-[1vw]">
-            <div className="text-[3vw] font-black text-[#25D366]">98%</div>
-            <div className="text-[1vw] text-[#94A3B8]">Delivered</div>
-          </div>
-        </motion.div>
-      </div>
-
-      <div className="w-[48%] relative z-10">
-        <motion.div
-          className="bg-[#0D1F3C] border border-[#1E3A5F] rounded-[2vw] p-[2.5vw] shadow-2xl"
-          initial={{ opacity: 0, x: 60, scale: 0.95 }}
-          animate={phase >= 1 ? { opacity: 1, x: 0, scale: 1 } : { opacity: 0, x: 60, scale: 0.95 }}
-          transition={{ type: 'spring', stiffness: 150, damping: 20 }}
-        >
-          <div className="flex items-center justify-between mb-[2vh]">
-            <div>
-              <div className="text-white font-bold text-[1.4vw]">Diwali Offer 🎇</div>
-              <div className="text-[#94A3B8] text-[1vw]">Sending to 8 contacts...</div>
-            </div>
-            <motion.div
-              className="bg-[#FF6B35] text-white text-[1vw] font-bold px-[1.5vw] py-[0.6vw] rounded-full"
-              animate={phase >= 3 ? { scale: [1, 1.05, 1] } : { scale: 1 }}
-              transition={{ duration: 0.5, repeat: phase >= 3 ? Infinity : 0 }}
-            >
-              LIVE
-            </motion.div>
-          </div>
-
-          <div className="flex flex-col gap-[1.2vh]">
-            {recipients.map((r, i) => (
-              <motion.div
-                key={r.name}
-                className="flex items-center gap-[1.2vw] bg-[#112240]/60 rounded-xl px-[1.5vw] py-[1vh]"
-                initial={{ opacity: 0, x: 30 }}
-                animate={phase >= 2 ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
-                transition={{ delay: r.delay, duration: 0.4, ease: 'circOut' }}
-              >
-                <div className="w-[2.5vw] h-[2.5vw] rounded-full bg-gradient-to-tr from-[#25D366] to-[#00FF88] flex items-center justify-center text-black text-[0.8vw] font-bold shrink-0">
-                  {r.avatar}
-                </div>
-                <div className="flex-1 text-white text-[1.1vw]">{r.name}</div>
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={phase >= 3 ? { scale: 1 } : { scale: 0 }}
-                  transition={{ delay: r.delay + 0.5, type: 'spring' }}
-                >
-                  <svg className="w-[1.5vw] h-[1.5vw] text-[#25D366]" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                  </svg>
-                </motion.div>
-              </motion.div>
+          <motion.div
+            className="mt-6 flex gap-4"
+            initial={{ opacity: 0, y: 16 }}
+            animate={phase >= 5 ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+            transition={{ duration: 0.5 }}
+          >
+            {[['10K+', 'Sent'], ['98%', 'Delivered'], ['3x', 'More Sales']].map(([v, l], i) => (
+              <div key={l} className="bg-[#1a0c05] border border-[#FF6B35]/30 rounded-xl px-3 py-2 text-center">
+                <div className="text-[1.8vw] font-black text-[#FF6B35]">{v}</div>
+                <div className="text-[0.9vw] text-[#64748B]">{l}</div>
+              </div>
             ))}
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
+
+        <div className="flex-1">
+          <motion.div
+            className="bg-[#0d1a2e] border border-[#1e3a5f] rounded-[1.5vw] overflow-hidden shadow-2xl"
+            initial={{ opacity: 0, x: 50, scale: 0.95 }}
+            animate={phase >= 1 ? { opacity: 1, x: 0, scale: 1 } : { opacity: 0, x: 50, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 150, damping: 20, delay: 0.15 }}
+          >
+            <div className="flex items-center justify-between px-[2vw] py-[1.5vh] border-b border-[#1e3a5f]">
+              <div>
+                <div className="text-white font-bold text-[1.3vw]">Diwali Sale 🎇</div>
+                <div className="text-[#64748B] text-[1vw]">6 contacts selected</div>
+              </div>
+              <motion.button
+                className="bg-gradient-to-r from-[#FF6B35] to-[#ff8c5a] text-white text-[1vw] font-bold px-[1.5vw] py-[0.8vh] rounded-full shadow-lg"
+                animate={phase >= 2 ? { scale: [1, 0.93, 1] } : { scale: 1 }}
+                transition={{ duration: 0.25, times: [0, 0.5, 1] }}
+              >
+                {phase >= 2 ? '✓ Sent!' : 'Send Now'}
+              </motion.button>
+            </div>
+
+            <div className="px-[1.5vw] py-[1vh] flex flex-col gap-[1.2vh]">
+              {contacts.map((c, i) => (
+                <motion.div
+                  key={c.name}
+                  className="flex items-center gap-[1.2vw] bg-[#112240]/50 rounded-xl px-[1.2vw] py-[1vh]"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={phase >= 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }}
+                  transition={{ delay: 0.3 + c.delay, duration: 0.35, ease: 'circOut' }}
+                >
+                  <div className="w-[2.5vw] h-[2.5vw] rounded-full bg-gradient-to-br from-[#25D366] to-[#128C7E] flex items-center justify-center text-white text-[0.85vw] font-bold shrink-0">
+                    {c.avatar}
+                  </div>
+                  <div className="flex-1 text-white text-[1.1vw]">{c.name}</div>
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={phase >= 4 ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+                    transition={{ delay: 0.2 + c.delay, type: 'spring', stiffness: 500, damping: 20 }}
+                  >
+                    <svg className="w-[1.4vw] h-[1.4vw] text-[#25D366]" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                  </motion.div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
       </div>
     </motion.div>
   );

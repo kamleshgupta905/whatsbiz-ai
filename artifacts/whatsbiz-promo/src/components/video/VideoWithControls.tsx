@@ -142,7 +142,7 @@ export default function VideoWithControls() {
     durations, activeDuration, onSceneChange, jumpTo, toggleLock,
   } = useSceneControls(SCENE_DURATIONS);
 
-  const [voiceoverEnabled, setVoiceoverEnabled] = useState(false);
+  const [voiceoverEnabled, setVoiceoverEnabled] = useState(true);
   const toggleVoiceover = useCallback(() => {
     setVoiceoverEnabled(v => {
       if (v && typeof window !== 'undefined' && window.speechSynthesis) {
