@@ -1,49 +1,59 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useVideoPlayer } from '@/lib/video';
 import { useVoiceover } from '@/lib/video/voiceover';
 import { Scene1 } from './video_scenes/Scene1';
 import { Scene2 } from './video_scenes/Scene2';
 import { Scene3 } from './video_scenes/Scene3';
 import { Scene4 } from './video_scenes/Scene4';
-import { Scene5 } from './video_scenes/Scene5';
+import { Scene5Inbox } from './video_scenes/Scene5Inbox';
 import { Scene6 } from './video_scenes/Scene6';
+import { Scene7 } from './video_scenes/Scene7';
+import { Scene8Setup } from './video_scenes/Scene8Setup';
+import { Scene9Training } from './video_scenes/Scene9Training';
+import { Scene10Pricing } from './video_scenes/Scene10Pricing';
+import { Scene11Proof } from './video_scenes/Scene11Proof';
+import { Scene12 } from './video_scenes/Scene12';
 
-export const SCENE_DURATIONS = {
-  hook: 10000,
-  intro: 9000,
-  aiReply: 12000,
-  broadcast: 11000,
-  dashboard: 12000,
-  closing: 12000,
+export const SCENE_DURATIONS: Record<string, number> = {
+  hook:       18000,
+  agitation:  22000,
+  intro:      20000,
+  aiReply:    35000,
+  inbox:      30000,
+  broadcast:  28000,
+  dashboard:  28000,
+  setup:      20000,
+  training:   25000,
+  pricing:    20000,
+  proof:      22000,
+  closing:    25000,
 };
 
 const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
-  hook: Scene1,
-  intro: Scene2,
-  aiReply: Scene3,
-  broadcast: Scene4,
-  dashboard: Scene5,
-  closing: Scene6,
+  hook:       Scene1,
+  agitation:  Scene2,
+  intro:      Scene3,
+  aiReply:    Scene4,
+  inbox:      Scene5Inbox,
+  broadcast:  Scene6,
+  dashboard:  Scene7,
+  setup:      Scene8Setup,
+  training:   Scene9Training,
+  pricing:    Scene10Pricing,
+  proof:      Scene11Proof,
+  closing:    Scene12,
 };
 
-const bgPositions = [
-  { x: '45vw', y: '40vh', scale: 2.2, opacity: 0.12 },
-  { x: '10vw', y: '15vh', scale: 1.5, opacity: 0.08 },
-  { x: '70vw', y: '55vh', scale: 1.8, opacity: 0.1 },
-  { x: '20vw', y: '65vh', scale: 1.3, opacity: 0.09 },
-  { x: '55vw', y: '20vh', scale: 2.0, opacity: 0.11 },
-  { x: '30vw', y: '50vh', scale: 2.4, opacity: 0.13 },
-];
+const SCENE_KEYS = Object.keys(SCENE_DURATIONS);
 
-const accentPositions = [
-  { x: '80vw', y: '20vh', rotate: 0 },
-  { x: '5vw', y: '70vh', rotate: 45 },
-  { x: '60vw', y: '80vh', rotate: 90 },
-  { x: '15vw', y: '25vh', rotate: 135 },
-  { x: '75vw', y: '60vh', rotate: 180 },
-  { x: '40vw', y: '10vh', rotate: 225 },
-];
+const bgPositions = SCENE_KEYS.map((_, i) => ({
+  x: `${10 + (i * 7.3) % 60}vw`,
+  y: `${10 + (i * 11.7) % 60}vh`,
+  scale: 1.4 + (i % 4) * 0.3,
+  opacity: 0.06 + (i % 3) * 0.02,
+}));
 
 export default function VideoTemplate({
   durations = SCENE_DURATIONS,
@@ -64,50 +74,50 @@ export default function VideoTemplate({
 
   useVoiceover(currentSceneKey, voiceoverEnabled);
 
-  const baseSceneKey = currentSceneKey.replace(/_r[12]$/, '') as keyof typeof SCENE_DURATIONS;
-  const sceneIndex = Object.keys(SCENE_DURATIONS).indexOf(baseSceneKey);
-  const SceneComponent = SCENE_COMPONENTS[baseSceneKey];
-
-  const bgPos = bgPositions[sceneIndex] ?? bgPositions[0];
-  const accPos = accentPositions[sceneIndex] ?? accentPositions[0];
+  const baseKey = currentSceneKey.replace(/_r[12]$/, '');
+  const sceneIndex = SCENE_KEYS.indexOf(baseKey);
+  const SceneComponent = SCENE_COMPONENTS[baseKey];
+  const bgPos = bgPositions[Math.max(0, sceneIndex)];
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#060F1E]">
       <motion.div
-        className="absolute w-[50vw] h-[50vw] rounded-full bg-[#25D366] blur-[120px] pointer-events-none"
+        className="absolute w-[55vw] h-[55vw] rounded-full bg-[#25D366] blur-[140px] pointer-events-none"
         animate={{ x: bgPos.x, y: bgPos.y, scale: bgPos.scale, opacity: bgPos.opacity }}
-        transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
-        style={{ left: '-10vw', top: '-10vh' }}
+        transition={{ duration: 1.6, ease: [0.16, 1, 0.3, 1] }}
+        style={{ left: '-15vw', top: '-15vh' }}
       />
       <motion.div
-        className="absolute w-[30vw] h-[30vw] rounded-full bg-[#FF6B35] blur-[100px] pointer-events-none"
+        className="absolute w-[35vw] h-[35vw] rounded-full bg-[#FF6B35] blur-[120px] pointer-events-none"
         animate={{
-          x: sceneIndex % 2 === 0 ? '70vw' : '10vw',
-          y: sceneIndex % 2 === 0 ? '70vh' : '10vh',
-          opacity: [0.04, 0.07, 0.04],
+          x: sceneIndex % 2 === 0 ? '72vw' : '8vw',
+          y: sceneIndex % 2 === 0 ? '68vh' : '8vh',
+          opacity: [0.04, 0.08, 0.04],
         }}
-        transition={{ x: { duration: 1.2, ease: [0.16, 1, 0.3, 1] }, y: { duration: 1.2, ease: [0.16, 1, 0.3, 1] }, opacity: { duration: 3, repeat: Infinity, ease: 'easeInOut' } }}
-      />
-
-      <motion.div
-        className="absolute w-[2px] h-[15vh] bg-gradient-to-b from-[#25D366]/0 via-[#25D366]/60 to-[#25D366]/0 pointer-events-none"
-        animate={{ x: accPos.x, y: accPos.y, rotate: accPos.rotate, opacity: sceneIndex === 5 ? 0 : 0.5 }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-        style={{ left: 0, top: 0 }}
-      />
-      <motion.div
-        className="absolute w-[6vw] h-[6vw] rounded-full border border-[#25D366]/20 pointer-events-none"
-        animate={{
-          x: sceneIndex % 2 === 0 ? '85vw' : '5vw',
-          y: sceneIndex % 3 === 0 ? '10vh' : sceneIndex % 3 === 1 ? '50vh' : '80vh',
-          scale: [1, 1.1, 1],
+        transition={{
+          x: { duration: 1.4, ease: [0.16, 1, 0.3, 1] },
+          y: { duration: 1.4, ease: [0.16, 1, 0.3, 1] },
+          opacity: { duration: 3, repeat: Infinity, ease: 'easeInOut' },
         }}
-        transition={{ x: { duration: 1.2 }, y: { duration: 1.2 }, scale: { duration: 3, repeat: Infinity, ease: 'easeInOut' } }}
       />
 
       <AnimatePresence initial={false} mode="popLayout">
         {SceneComponent && <SceneComponent key={currentSceneKey} />}
       </AnimatePresence>
+
+      <div className="absolute bottom-[1.2vh] right-[1.5vw] z-40 flex items-center gap-2 opacity-40">
+        {SCENE_KEYS.map((k, i) => (
+          <div
+            key={k}
+            className="rounded-full transition-all"
+            style={{
+              width: i === sceneIndex ? '1.5vw' : '0.5vw',
+              height: '0.5vw',
+              background: i === sceneIndex ? '#25D366' : '#1e3a5f',
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }

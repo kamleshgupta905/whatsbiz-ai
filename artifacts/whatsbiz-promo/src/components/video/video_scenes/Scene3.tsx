@@ -6,134 +6,99 @@ export function Scene3() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 300),
-      setTimeout(() => setPhase(2), 1800),
-      setTimeout(() => setPhase(3), 4500),
-      setTimeout(() => setPhase(4), 6200),
-      setTimeout(() => setPhase(5), 8000),
+      setTimeout(() => setPhase(1), 200),
+      setTimeout(() => setPhase(2), 1400),
+      setTimeout(() => setPhase(3), 3000),
+      setTimeout(() => setPhase(4), 4800),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
 
+  const rings = [1.6, 2.2, 3.0];
+
   return (
     <motion.div
-      className="absolute inset-0 flex items-center overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #060f1e 0%, #0a1628 50%, #060f1e 100%)' }}
-      initial={{ opacity: 0, x: 60 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -60 }}
-      transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+      className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden"
+      style={{ background: 'radial-gradient(ellipse 100% 100% at 50% 50%, #0a2418 0%, #060f1e 65%)' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ duration: 0.6, ease: 'circOut' }}
     >
-      <motion.div
-        className="absolute left-[15%] top-[25%] w-[28vw] h-[28vw] rounded-full bg-[#25D366] blur-[120px] opacity-8 pointer-events-none"
-        animate={{ scale: [1, 1.15, 1], opacity: [0.06, 0.1, 0.06] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-      />
+      {rings.map((s, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full border border-[#25D366]/12"
+          style={{ width: `${s * 18}vw`, height: `${s * 18}vw` }}
+          animate={{ scale: [1, 1.04, 1], opacity: [0.5, 0.9, 0.5] }}
+          transition={{ duration: 3 + i * 0.8, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 }}
+        />
+      ))}
 
-      <div className="flex w-full px-[8vw] gap-[4vw] items-center">
-        <div className="w-[42%] shrink-0">
+      <motion.div className="relative z-10 flex flex-col items-center" style={{ perspective: '1000px' }}>
+        <motion.div
+          className="w-[14vw] h-[14vw] rounded-[3vw] flex items-center justify-center relative"
+          style={{
+            background: 'linear-gradient(135deg, #25D366 0%, #128C7E 60%, #00FF88 100%)',
+            boxShadow: '0 0 80px rgba(37,211,102,0.45), 0 0 160px rgba(37,211,102,0.18)',
+          }}
+          initial={{ scale: 0, rotate: -60, opacity: 0 }}
+          animate={phase >= 1 ? { scale: 1, rotate: 0, opacity: 1 } : { scale: 0, rotate: -60, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+        >
+          <svg viewBox="0 0 24 24" className="w-[7vw] h-[7vw] text-white" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.305-.885-.653-1.482-1.46-1.656-1.758-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
+          </svg>
           <motion.div
-            className="text-[#25D366] text-[1vw] font-bold tracking-[0.2em] uppercase mb-3"
-            style={{ fontFamily: 'var(--font-display)' }}
-            initial={{ opacity: 0, x: -20 }}
-            animate={phase >= 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
-            transition={{ duration: 0.5 }}
+            className="absolute -top-2 -right-2 bg-[#00FF88] text-black text-[0.8vw] font-black px-2 py-1 rounded-full"
+            initial={{ scale: 0 }}
+            animate={phase >= 2 ? { scale: 1 } : { scale: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 16, delay: 0.2 }}
           >
-            AI Auto-Reply
+            AI
           </motion.div>
-          <motion.h2
-            className="text-[3.8vw] font-black leading-tight text-white mb-4"
-            style={{ fontFamily: 'var(--font-display)' }}
-            initial={{ opacity: 0, y: 24 }}
-            animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-          >
-            Perfect Reply,<br />
-            <span className="text-gradient">Every Time</span>
-          </motion.h2>
-          <motion.p
-            className="text-[1.6vw] text-[#94A3B8] leading-relaxed mb-6"
-            style={{ fontFamily: 'var(--font-body)' }}
-            initial={{ opacity: 0, y: 16 }}
-            animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            AI reads every message and responds instantly — no delays, no mistakes.
-          </motion.p>
+        </motion.div>
 
-          <motion.div
-            className="flex gap-3"
-            initial={{ opacity: 0 }}
-            animate={phase >= 5 ? { opacity: 1 } : { opacity: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            {[['24/7', 'Always On'], ['0s', 'Response Time'], ['100%', 'Coverage']].map(([val, lbl], i) => (
-              <motion.div
-                key={lbl}
-                className="bg-[#0a1f36] border border-[#1e3a5f] rounded-xl px-3 py-2 text-center"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={phase >= 5 ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0 }}
-                transition={{ delay: i * 0.1, type: 'spring' }}
-              >
-                <div className="text-[1.8vw] font-black text-[#25D366]">{val}</div>
-                <div className="text-[0.9vw] text-[#64748B]">{lbl}</div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
+        <motion.div
+          className="mt-[4vh] text-center"
+          initial={{ opacity: 0, y: 28 }}
+          animate={phase >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 28 }}
+          transition={{ duration: 0.7, ease: 'circOut' }}
+        >
+          <h2 className="text-[5vw] font-black text-white tracking-tight leading-none mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+            WhatsBiz <span className="text-gradient">AI</span>
+          </h2>
+        </motion.div>
 
-        <div className="flex-1 flex flex-col gap-3">
-          <motion.div
-            className="self-start max-w-[80%] bg-white/8 border border-white/10 backdrop-blur-sm rounded-2xl rounded-tl-sm px-4 py-3"
-            initial={{ opacity: 0, x: -30, scale: 0.9 }}
-            animate={phase >= 2 ? { opacity: 1, x: 0, scale: 1 } : { opacity: 0, x: -30, scale: 0.9 }}
-            transition={{ type: 'spring', stiffness: 250, damping: 22 }}
-          >
-            <p className="text-white text-[1.3vw]">Hi! Do you have the iPhone 15 Pro in stock? What's the price?</p>
-            <span className="text-white/35 text-[0.85vw] mt-1 block">Customer · 10:42 AM</span>
-          </motion.div>
+        <motion.p
+          className="text-[1.8vw] text-[#94A3B8] mt-2 text-center max-w-[55vw] leading-snug"
+          initial={{ opacity: 0, y: 16 }}
+          animate={phase >= 3 ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+          transition={{ duration: 0.6 }}
+        >
+          India's most powerful WhatsApp automation platform
+        </motion.p>
 
-          <motion.div
-            className="self-end max-w-[75%] bg-[#0a2418] border border-[#25D366]/30 rounded-2xl rounded-tr-sm px-4 py-3"
-            initial={{ opacity: 0, x: 30, scale: 0.9 }}
-            animate={phase >= 3 ? { opacity: 1, x: 0, scale: 1 } : { opacity: 0, x: 30, scale: 0.9 }}
-            transition={{ type: 'spring', stiffness: 250, damping: 22 }}
-          >
-            <div className="flex gap-[0.5vw] py-1">
-              {[0, 0.2, 0.4].map((d, i) => (
-                <motion.div
-                  key={i}
-                  className="w-[0.9vw] h-[0.9vw] rounded-full bg-[#25D366]"
-                  animate={phase >= 3 && phase < 4 ? { y: [0, -5, 0] } : { y: 0 }}
-                  transition={{ duration: 0.55, repeat: phase >= 3 && phase < 4 ? Infinity : 0, delay: d }}
-                />
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="self-end max-w-[85%] bg-[#0a2418] border border-[#25D366]/40 rounded-2xl rounded-tr-sm px-4 py-3"
-            initial={{ opacity: 0, x: 30, scale: 0.9 }}
-            animate={phase >= 4 ? { opacity: 1, x: 0, scale: 1 } : { opacity: 0, x: 30, scale: 0.9 }}
-            transition={{ type: 'spring', stiffness: 250, damping: 22 }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="bg-[#25D366] text-black text-[0.75vw] font-black px-2 py-0.5 rounded-md">WhatsBiz AI</div>
-              <span className="text-[#25D366]/60 text-[0.85vw]">Replied instantly</span>
-            </div>
-            <p className="text-white text-[1.3vw] leading-snug">
-              Yes! iPhone 15 Pro is in stock. 128GB at ₹1,34,900 and 256GB at ₹1,44,900. We have all colors available. Would you like to reserve one? 😊
-            </p>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-[#25D366]/50 text-[0.85vw]">10:42 AM</span>
-              <div className="flex gap-1">
-                <svg className="w-[1.2vw] h-[1.2vw] text-[#25D366]" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                <svg className="w-[1.2vw] h-[1.2vw] text-[#25D366]" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </div>
+        <motion.div
+          className="flex items-center gap-6 mt-[4vh]"
+          initial={{ opacity: 0 }}
+          animate={phase >= 4 ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          {['Intelligent', 'Instant', 'Always On'].map((tag, i) => (
+            <motion.div
+              key={tag}
+              className="flex items-center gap-2 bg-[#25D366]/12 border border-[#25D366]/30 rounded-full px-4 py-2"
+              initial={{ opacity: 0, y: 12, scale: 0.9 }}
+              animate={phase >= 4 ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 12, scale: 0.9 }}
+              transition={{ delay: i * 0.12, type: 'spring', stiffness: 300, damping: 20 }}
+            >
+              <div className="w-2 h-2 rounded-full bg-[#25D366]" />
+              <span className="text-[#25D366] text-[1.2vw] font-semibold">{tag}</span>
+            </motion.div>
+          ))}
+        </motion.div>
+      </motion.div>
     </motion.div>
   );
 }
