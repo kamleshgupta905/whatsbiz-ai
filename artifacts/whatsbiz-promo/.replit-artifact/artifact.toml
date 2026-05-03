@@ -1,0 +1,31 @@
+kind = "video"
+previewPath = "/whatsbiz-promo/"
+title = "WhatsBiz AI Promo Video"
+version = "1.0.0"
+id = "artifacts/whatsbiz-promo"
+router = "path"
+
+[[integratedSkills]]
+name = "video-js"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/whatsbiz-promo/" ]
+localPort = 25675
+
+[services.development]
+run = "pnpm --filter @workspace/whatsbiz-promo run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/whatsbiz-promo", "run", "build" ]
+publicDir = "artifacts/whatsbiz-promo/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25675"
+BASE_PATH = "/whatsbiz-promo/"

@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "QbUKOVRsLK4zInn50uFua"
+uri = "file://artifacts/whatsbiz-promo/public/images/dashboard.png"
+type = "image"
+title = "Dark mode dashboard UI with green accents"
+
+[[generated]]
+id = "hCVwt504qcQLquRF2PSVu"
+uri = "file://artifacts/whatsbiz-promo/public/images/broadcast.png"
+type = "image"
+title = "Phone sending bulk messages"
