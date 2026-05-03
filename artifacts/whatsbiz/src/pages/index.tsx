@@ -307,7 +307,7 @@ export default function Landing() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-10">
             <div className="sm:col-span-2">
               <div className="flex items-center gap-3 mb-4">
-                <img src="/icon.png" alt="WhatsBiz AI" className="h-12 w-12 object-contain"
+                <img src="/icon.png" alt="WhatsBiz AI" className="h-24 w-24 object-contain"
                   style={{ filter: "brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(10deg)" }} />
                 <span className="font-extrabold text-2xl text-amber-400">WhatsBiz AI</span>
               </div>
