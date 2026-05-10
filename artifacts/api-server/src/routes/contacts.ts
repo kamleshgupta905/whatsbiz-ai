@@ -70,7 +70,7 @@ router.post("/contacts", requireAuth, async (req, res) => {
 
 router.get("/contacts/:id", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   const [contact] = await db.select().from(contactsTable)
     .where(and(eq(contactsTable.id, id), eq(contactsTable.userId, user.id)));
@@ -84,7 +84,7 @@ router.get("/contacts/:id", requireAuth, async (req, res) => {
 
 router.patch("/contacts/:id", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const { id } = req.params;
+  const id = req.params.id as string;
   const parsed = UpdateContactBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
@@ -102,7 +102,7 @@ router.patch("/contacts/:id", requireAuth, async (req, res) => {
 // ── DND toggle ────────────────────────────────────────────────────────────────
 router.patch("/contacts/:id/dnd", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const { id } = req.params;
+  const id = req.params.id as string;
   const { dndEnabled } = req.body as { dndEnabled: boolean };
 
   const [updated] = await db.update(contactsTable)
@@ -120,7 +120,7 @@ router.patch("/contacts/:id/dnd", requireAuth, async (req, res) => {
 
 router.delete("/contacts/:id", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   const [deleted] = await db.delete(contactsTable)
     .where(and(eq(contactsTable.id, id), eq(contactsTable.userId, user.id)))

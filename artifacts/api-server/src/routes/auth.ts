@@ -6,6 +6,25 @@ import { hashPassword, generateToken, storeToken, getUserIdFromToken, removeToke
 
 const router = Router();
 
+async function getOnboardingState(user: typeof usersTable.$inferSelect) {
+  if (user.onboardingComplete || user.onboardingStep >= 5) {
+    return { onboardingStep: user.onboardingStep, onboardingComplete: user.onboardingComplete };
+  }
+
+  const [kb] = await db.select({ systemPrompt: knowledgeBaseTable.systemPrompt })
+    .from(knowledgeBaseTable)
+    .where(eq(knowledgeBaseTable.userId, user.id));
+
+  if (kb?.systemPrompt?.trim()) {
+    await db.update(usersTable)
+      .set({ onboardingStep: 5, onboardingComplete: true, updatedAt: new Date() })
+      .where(eq(usersTable.id, user.id));
+    return { onboardingStep: 5, onboardingComplete: true };
+  }
+
+  return { onboardingStep: user.onboardingStep, onboardingComplete: user.onboardingComplete };
+}
+
 router.post("/auth/register", async (req, res) => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
@@ -107,6 +126,7 @@ router.post("/auth/login", async (req, res) => {
 
   const token = generateToken(user.id);
   storeToken(token, user.id);
+  const onboarding = await getOnboardingState(user);
 
   res.json({
     user: {
@@ -118,7 +138,8 @@ router.post("/auth/login", async (req, res) => {
       businessType: user.businessType,
       role: user.role,
       language: user.language,
-      onboardingStep: user.onboardingStep,
+      onboardingStep: onboarding.onboardingStep,
+      onboardingComplete: onboarding.onboardingComplete,
       isVerified: user.isVerified,
       createdAt: user.createdAt,
     },
@@ -135,6 +156,7 @@ router.post("/auth/logout", requireAuth, (req, res) => {
 
 router.get("/auth/me", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
+  const onboarding = await getOnboardingState(user as typeof usersTable.$inferSelect);
   res.json({
     id: user.id,
     name: user.name,
@@ -144,7 +166,8 @@ router.get("/auth/me", requireAuth, async (req, res) => {
     businessType: user.businessType,
     role: user.role,
     language: user.language,
-    onboardingStep: user.onboardingStep,
+    onboardingStep: onboarding.onboardingStep,
+    onboardingComplete: onboarding.onboardingComplete,
     isVerified: user.isVerified,
     createdAt: user.createdAt,
   });

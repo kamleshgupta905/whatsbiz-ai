@@ -51,7 +51,7 @@ router.get("/conversations", requireAuth, async (req, res) => {
 
 router.get("/conversations/:id", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   const [conv] = await db.select().from(conversationsTable)
     .where(and(eq(conversationsTable.id, id), eq(conversationsTable.userId, user.id)));
@@ -119,7 +119,7 @@ router.get("/conversations/:id", requireAuth, async (req, res) => {
 
 router.patch("/conversations/:id", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const { id } = req.params;
+  const id = req.params.id as string;
   const parsed = UpdateConversationBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
@@ -149,7 +149,7 @@ router.patch("/conversations/:id", requireAuth, async (req, res) => {
 
 router.post("/conversations/:id/messages", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const { id } = req.params;
+  const id = req.params.id as string;
   const parsed = SendMessageBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });

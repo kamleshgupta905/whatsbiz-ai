@@ -44,7 +44,7 @@ router.get("/admin/users", requireAdmin, async (_req, res) => {
 
 // ─── Change a user's plan ─────────────────────────────────────────────────────
 router.patch("/admin/users/:id/plan", requireAdmin, async (req, res) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   const { plan } = req.body as { plan: string };
 
   const validPlans = ["TRIAL", "STARTER", "PRO", "BUSINESS"];
@@ -72,7 +72,7 @@ router.patch("/admin/users/:id/plan", requireAdmin, async (req, res) => {
 
 // ─── Change a user's role ─────────────────────────────────────────────────────
 router.patch("/admin/users/:id/role", requireAdmin, async (req, res) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   const { role } = req.body as { role: string };
 
   const validRoles = ["CLIENT", "ADMIN", "SUPPORT"];
@@ -97,7 +97,7 @@ router.patch("/admin/users/:id/role", requireAdmin, async (req, res) => {
 
 // ─── Activate / suspend a user ────────────────────────────────────────────────
 router.patch("/admin/users/:id/status", requireAdmin, async (req, res) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   const { isActive } = req.body as { isActive: boolean };
 
   const [user] = await db
@@ -116,7 +116,7 @@ router.patch("/admin/users/:id/status", requireAdmin, async (req, res) => {
 
 // ─── Reset scrape sessions counter ───────────────────────────────────────────
 router.post("/admin/users/:id/reset-scrapes", requireAdmin, async (req, res) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   const [sub] = await db
     .update(subscriptionsTable)

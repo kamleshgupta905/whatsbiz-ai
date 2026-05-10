@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api-url";
 import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from "@/components/ui/tooltip";
@@ -33,7 +34,7 @@ interface ContactItem {
 
 async function apiCall(path: string, method = "GET", body?: unknown) {
   const token = localStorage.getItem("token");
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     method,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: body ? JSON.stringify(body) : undefined,
@@ -72,7 +73,7 @@ export default function Contacts() {
     { query: { queryKey: ["contacts", search] } }
   );
 
-  const contacts = (data?.contacts ?? []) as ContactItem[];
+  const contacts = (data?.contacts ?? []) as unknown as ContactItem[];
 
   const handleToggleDnd = async (contact: ContactItem) => {
     setTogglingDnd(contact.id);

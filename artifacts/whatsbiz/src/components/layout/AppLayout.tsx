@@ -55,6 +55,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       refetchIntervalInBackground: true,
       staleTime: 0,
       gcTime: 0,
+      queryKey: ["whatsappStatus"],
     },
   });
 

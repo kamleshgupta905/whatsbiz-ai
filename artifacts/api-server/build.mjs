@@ -32,6 +32,7 @@ async function buildAll() {
       "sharp",
       "better-sqlite3",
       "sqlite3",
+      "@electric-sql/pglite",
       "canvas",
       "bcrypt",
       "argon2",

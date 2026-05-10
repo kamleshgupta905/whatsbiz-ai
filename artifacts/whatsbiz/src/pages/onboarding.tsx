@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useUpdateKnowledgeBase, useConnectWhatsapp, useGetWhatsappStatus, getGetWhatsappStatusQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { QRCodeSVG } from "qrcode.react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Smartphone, Zap } from "lucide-react";
+import { apiUrl } from "@/lib/api-url";
 
 const DEFAULT_PROMPT = `You are a helpful WhatsApp assistant for {businessName}.
 
@@ -25,6 +25,16 @@ Rules:
 - Always greet new customers warmly.
 - For orders or appointments, ask for their name and confirm details.`;
 
+async function fetchQR(): Promise<{ status: string; qrBase64: string | null }> {
+  const token = localStorage.getItem("token");
+  const res = await fetch(apiUrl("/api/whatsapp/qr"), {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("QR fetch failed");
+  return res.json();
+}
+
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
@@ -34,7 +44,7 @@ export default function Onboarding() {
   const [systemPrompt, setSystemPrompt] = useState(
     DEFAULT_PROMPT.replace("{businessName}", user?.businessName || "our business")
   );
-  const [qrValue, setQrValue] = useState<string | null>(null);
+  const [sessionStarted, setSessionStarted] = useState(false);
   const [connected, setConnected] = useState(false);
 
   const updateKb = useUpdateKnowledgeBase();
@@ -46,23 +56,31 @@ export default function Onboarding() {
       refetchInterval: connected ? false : 4000,
     }
   });
+  const { data: qrData, refetch: refetchQR } = useQuery({
+    queryKey: ["onboarding", "whatsapp", "qr"],
+    queryFn: fetchQR,
+    enabled: step === 2 && !connected,
+    refetchInterval: step === 2 && !connected ? 3000 : false,
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
+  });
 
   useEffect(() => {
-    if (waStatus?.status === "connected" && step === 2) {
+    if ((waStatus?.status === "connected" || qrData?.status === "connected") && step === 2) {
       setConnected(true);
     }
-  }, [waStatus, step]);
+  }, [waStatus?.status, qrData?.status, step]);
 
   const handleSavePromptAndContinue = () => {
     updateKb.mutate({ data: { systemPrompt } }, {
       onSuccess: () => {
         connectWa.mutate(undefined, {
-          onSuccess: (res) => {
-            if (res.qrCode) {
-              setQrValue(`WHATSBIZ-WA-${user?.id}-${Date.now()}`);
-            }
+          onSuccess: () => {
+            setSessionStarted(true);
             setStep(2);
             queryClient.invalidateQueries({ queryKey: getGetWhatsappStatusQueryKey() });
+            setTimeout(() => refetchQR(), 1500);
           }
         });
       }
@@ -161,13 +179,12 @@ export default function Onboarding() {
               ) : (
                 <>
                   <div className="flex flex-col items-center gap-4">
-                    {qrValue ? (
+                    {qrData?.qrBase64 ? (
                       <div className="bg-white p-4 rounded-2xl border-2 border-border shadow-sm inline-block">
-                        <QRCodeSVG
-                          value={qrValue}
-                          size={220}
-                          level="M"
-                          includeMargin={false}
+                        <img
+                          src={qrData.qrBase64}
+                          alt="WhatsApp QR Code"
+                          className="w-[220px] h-[220px]"
                         />
                       </div>
                     ) : (

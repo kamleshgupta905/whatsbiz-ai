@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { apiUrl } from "@/lib/api-url";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 
 async function fetchQR(): Promise<{ status: string; qrBase64: string | null }> {
   const token = localStorage.getItem("token");
-  const res = await fetch("/api/whatsapp/qr", {
+  const res = await fetch(apiUrl("/api/whatsapp/qr"), {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
@@ -317,7 +318,7 @@ export default function Dashboard() {
                     <img
                       src={qrData.qrBase64}
                       alt="WhatsApp QR Code"
-                      className="w-52 h-52 rounded-xl border-2 border-border"
+                      className="w-52 h-52 border-2 border-border p-2 bg-white"
                     />
                   ) : (
                     <div className="w-52 h-52 bg-muted animate-pulse rounded-xl flex flex-col items-center justify-center gap-2">

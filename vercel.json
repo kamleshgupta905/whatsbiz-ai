@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @workspace/whatsbiz run build",
+  "outputDirectory": "artifacts/whatsbiz/dist/public",
+  "rewrites": [
+    {
+      "source": "/((?!assets/|icon.png|api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

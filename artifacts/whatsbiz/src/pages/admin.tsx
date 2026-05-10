@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api-url";
 
 interface AdminUser {
   id: string;
@@ -57,7 +58,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 async function adminApi(path: string, method = "GET", body?: unknown) {
   const token = localStorage.getItem("token");
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     method,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: body ? JSON.stringify(body) : undefined,

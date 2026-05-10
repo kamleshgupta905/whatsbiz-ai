@@ -28,9 +28,15 @@ node_modules
 !.vscode/extensions.json
 
 # misc
+.env
+.env.*
+!.env.example
 /.sass-cache
 /connect.lock
 /coverage
+*.log
+qr-verification.png
+.local-db/
 /libpeerconnection.log
 npm-debug.log
 yarn-error.log

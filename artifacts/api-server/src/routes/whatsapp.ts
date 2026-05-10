@@ -80,7 +80,7 @@ router.put("/whatsapp/settings", requireAuth, async (req, res) => {
   }
 
   const [updated] = await db.update(whatsappSessionsTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...parsed.data, workingHours: parsed.data.workingHours as any, updatedAt: new Date() })
     .where(eq(whatsappSessionsTable.userId, user.id))
     .returning();
 

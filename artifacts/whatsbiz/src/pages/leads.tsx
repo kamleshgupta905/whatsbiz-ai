@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api-url";
 import {
   Select,
   SelectContent,
@@ -51,7 +52,7 @@ interface Usage {
 
 async function apiCall(path: string, method = "GET", body?: unknown) {
   const token = localStorage.getItem("token");
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     method,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: body ? JSON.stringify(body) : undefined,

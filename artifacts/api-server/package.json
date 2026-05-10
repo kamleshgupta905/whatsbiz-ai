@@ -4,12 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
+    "dev": "set NODE_ENV=development&& set PORT=5000&& pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.4.5",
     "@hapi/boom": "^10.0.1",
     "@types/cheerio": "^1.0.0",
     "@types/qrcode": "^1.5.6",

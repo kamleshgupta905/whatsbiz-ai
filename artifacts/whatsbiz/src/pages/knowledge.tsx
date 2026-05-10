@@ -9,10 +9,11 @@ import { Save, Bot, Sparkles, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQueryClient } from "@tanstack/react-query";
+import { apiUrl } from "@/lib/api-url";
 
 async function generatePrompt(): Promise<{ prompt: string; version: number }> {
   const token = localStorage.getItem("token");
-  const res = await fetch("/api/knowledge/generate-prompt", {
+  const res = await fetch(apiUrl("/api/knowledge/generate-prompt"), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   });

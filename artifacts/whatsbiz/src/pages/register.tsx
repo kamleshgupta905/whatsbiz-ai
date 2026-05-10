@@ -36,7 +36,7 @@ export default function Register() {
   const registerMutation = useRegister();
 
   const form = useForm<z.infer<typeof registerSchema>>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(registerSchema as any),
     defaultValues: { name: "", email: "", phone: "", businessName: "", password: "" },
   });
 

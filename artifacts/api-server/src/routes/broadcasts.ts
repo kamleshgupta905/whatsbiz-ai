@@ -71,7 +71,7 @@ router.post("/broadcasts", requireAuth, async (req, res) => {
 
 router.post("/broadcasts/:id/send", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   const [broadcast, limits] = await Promise.all([
     db.select().from(broadcastsTable).where(eq(broadcastsTable.id, id)).then(r => r[0]),

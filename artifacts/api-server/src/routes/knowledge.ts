@@ -1,18 +1,13 @@
 import { Router } from "express";
-import { db, knowledgeBaseTable } from "@workspace/db";
+import { db, knowledgeBaseTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpdateKnowledgeBaseBody, TestAIBody } from "@workspace/api-zod";
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
 import { invalidateKBCache } from "../lib/whatsapp-manager.js";
 import * as cheerio from "cheerio";
-import OpenAI from "openai";
+import { AI_MODEL, createChatCompletion, hasAIProvider } from "../lib/ai-provider.js";
 
 const router = Router();
-
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-});
 
 router.get("/knowledge", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
@@ -55,6 +50,12 @@ router.put("/knowledge", requireAuth, async (req, res) => {
     .set(updateData)
     .where(eq(knowledgeBaseTable.userId, user.id))
     .returning();
+
+  if (!user.onboardingComplete) {
+    await db.update(usersTable)
+      .set({ onboardingStep: 5, onboardingComplete: true, updatedAt: new Date() })
+      .where(eq(usersTable.id, user.id));
+  }
 
   invalidateKBCache(user.id);
 
@@ -127,8 +128,8 @@ router.post("/knowledge/scrape-website", requireAuth, async (req, res) => {
       return;
     }
 
-    const summaryResponse = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+    const summaryResponse = await createChatCompletion({
+      model: AI_MODEL,
       max_completion_tokens: 1500,
       messages: [
         {
@@ -206,8 +207,17 @@ router.post("/knowledge/test-ai", requireAuth, async (req, res) => {
   const history = parsed.data.history ?? [];
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+    if (!hasAIProvider()) {
+      res.json({
+        reply: `Hello! Main ${user.businessName} ka AI assistant hoon. AI API key configure karne ke baad live AI reply yahan aayega.`,
+        tokensUsed: 0,
+        responseTime: Date.now() - start,
+      });
+      return;
+    }
+
+    const response = await createChatCompletion({
+      model: AI_MODEL,
       max_completion_tokens: 500,
       messages: [
         { role: "system", content: systemPrompt },

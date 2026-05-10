@@ -9,21 +9,13 @@ import { Boom } from "@hapi/boom";
 import { db, whatsappSessionsTable, knowledgeBaseTable, contactsTable, conversationsTable, messagesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import qrcode from "qrcode";
-import { mkdir } from "fs/promises";
+import { mkdir, rm } from "fs/promises";
 import { join } from "path";
-import { exec } from "child_process";
-import { promisify } from "util";
 import pino from "pino";
 import OpenAI from "openai";
-
-const execAsync = promisify(exec);
+import { AI_MODEL, createChatCompletion, hasAIProvider } from "./ai-provider.js";
 
 const silentLogger = pino({ level: "silent" });
-
-const openai = new OpenAI({
-  baseURL: "https://integrate.api.nvidia.com/v1",
-  apiKey: process.env.NVIDIA_API_KEY,
-});
 
 interface SessionState {
   socket: WASocket | null;
@@ -106,7 +98,7 @@ export async function startSession(userId: string, forceNew = false): Promise<vo
 
   // forceNew = true means user explicitly clicked "Connect" — wipe stale creds so fresh QR generates
   if (forceNew) {
-    try { await execAsync(`rm -rf "${authDir}"`); } catch {}
+    try { await rm(authDir, { recursive: true, force: true }); } catch {}
   }
   await mkdir(authDir, { recursive: true });
 
@@ -183,8 +175,12 @@ async function generateAIReply(userId: string, customerPhone: string, incomingTe
       }
     }
 
-    const response = await openai.chat.completions.create({
-      model: "meta/llama-3.1-8b-instruct",
+    if (!hasAIProvider()) {
+      return "Hello! Main aapke business ka AI assistant hoon. Abhi AI API key configure nahi hai, lekin WhatsApp connection ready hai.";
+    }
+
+    const response = await createChatCompletion({
+      model: AI_MODEL,
       max_tokens: 150,
       messages: [
         { role: "system", content: systemPrompt },
@@ -265,7 +261,7 @@ async function saveMessageToDB(
         sender: "AI",
         content: aiReply,
         messageType: "TEXT",
-        aiModel: "llama-3.1-8b",
+        aiModel: AI_MODEL,
       },
     ]);
   } catch {}
@@ -311,7 +307,7 @@ async function createSocket(userId: string, state: SessionState, authDir: string
 
         if (qr) {
           try {
-            const qrBase64 = await qrcode.toDataURL(qr, { width: 300, margin: 2 });
+            const qrBase64 = await qrcode.toDataURL(qr, { width: 400, margin: 4 });
             state.qrBase64 = qrBase64;
             state.status = "qr_ready";
             console.log(`[WA] QR generated for user ${userId}`);
@@ -339,7 +335,7 @@ async function createSocket(userId: string, state: SessionState, authDir: string
             state.socket = null;
             state.qrBase64 = null;
             state.phoneNumber = null;
-            try { await execAsync(`rm -rf "${authDir}"`); } catch {}
+            try { await rm(authDir, { recursive: true, force: true }); } catch {}
             await mkdir(authDir, { recursive: true });
             await createSocket(userId, state, authDir);
           } else if (shouldReconnect) {

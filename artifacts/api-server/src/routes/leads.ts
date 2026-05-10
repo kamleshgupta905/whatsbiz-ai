@@ -184,7 +184,7 @@ router.get("/leads", requireAuth, async (req, res) => {
 
 router.post("/leads/:id/import", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   const [lead] = await db.select().from(leadsTable)
     .where(and(eq(leadsTable.id, id), eq(leadsTable.userId, user.id)));
