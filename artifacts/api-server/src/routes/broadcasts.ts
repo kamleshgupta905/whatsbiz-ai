@@ -9,6 +9,17 @@ import { getPlanLimits } from "../lib/plan-limits";
 
 const router = Router();
 
+function normalizePhone(phone: string): string | null {
+  const digits = phone.replace(/[^0-9]/g, "");
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length >= 11) return `+${digits}`;
+  return null;
+}
+
+function uniquePhones(phones: string[]): string[] {
+  return [...new Set(phones.map(normalizePhone).filter((phone): phone is string => Boolean(phone)))];
+}
+
 function formatBroadcast(b: typeof broadcastsTable.$inferSelect) {
   return {
     id: b.id,
@@ -89,15 +100,15 @@ router.post("/broadcasts/:id/send", requireAuth, async (req, res) => {
     const contacts = await db.select({ phone: contactsTable.phone })
       .from(contactsTable)
       .where(and(eq(contactsTable.userId, user.id), eq(contactsTable.dndEnabled, false)));
-    allPhones = contacts.map((c) => c.phone);
+    allPhones = uniquePhones(contacts.map((c) => c.phone));
   } else {
     // For custom list: filter out any DND contacts by phone lookup
-    const customPhones = (broadcast.recipients as string[]) ?? [];
+    const customPhones = uniquePhones((broadcast.recipients as string[]) ?? []);
     if (customPhones.length > 0) {
       const dndContacts = await db.select({ phone: contactsTable.phone })
         .from(contactsTable)
         .where(and(eq(contactsTable.userId, user.id), eq(contactsTable.dndEnabled, true)));
-      const dndSet = new Set(dndContacts.map(c => c.phone));
+      const dndSet = new Set(uniquePhones(dndContacts.map(c => c.phone)));
       allPhones = customPhones.filter(p => !dndSet.has(p));
     }
   }
@@ -117,7 +128,11 @@ router.post("/broadcasts/:id/send", requireAuth, async (req, res) => {
     .where(eq(broadcastsTable.id, id));
 
   // Send in background — respond immediately
-  void sendBroadcastMessages(user.id, phones, broadcast.message)
+  void sendBroadcastMessages(user.id, phones, broadcast.message, async (sent, failed) => {
+    await db.update(broadcastsTable)
+      .set({ deliveredCount: sent, failedCount: failed, updatedAt: new Date() })
+      .where(eq(broadcastsTable.id, id));
+  })
     .then(async ({ sent, failed }) => {
       await db.update(broadcastsTable)
         .set({ status: "sent", sentAt: new Date(), deliveredCount: sent, failedCount: failed, updatedAt: new Date() })

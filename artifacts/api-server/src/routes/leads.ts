@@ -10,6 +10,58 @@ const router = Router();
 
 const SERPAPI = "https://serpapi.com/search.json";
 
+type ScrapedLead = {
+  name: string | null;
+  phone: string | null;
+  website: string | null;
+  address: string | null;
+  rating: string | null;
+  reviews: number | null;
+  category: string | null;
+  thumbnailUrl: string | null;
+};
+
+function normalizePhone(phone: unknown): string | null {
+  if (typeof phone !== "string") return null;
+
+  const digits = phone.replace(/[^0-9]/g, "");
+  if (!digits) return null;
+
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith("91")) return `+${digits}`;
+  if (digits.length > 10) return `+${digits}`;
+
+  return null;
+}
+
+function toLead(raw: any): ScrapedLead {
+  return {
+    name: raw.title || raw.name || null,
+    phone: normalizePhone(raw.phone),
+    website: raw.website || raw.link || null,
+    address: raw.address || null,
+    rating: raw.rating != null ? String(raw.rating) : null,
+    reviews: typeof raw.reviews === "number" ? raw.reviews : null,
+    category: raw.type || raw.subtypes?.[0] || raw.category || null,
+    thumbnailUrl: raw.thumbnail || null,
+  };
+}
+
+function cleanAndLimitLeads(leads: ScrapedLead[], limit: number): ScrapedLead[] {
+  const seen = new Set<string>();
+  const cleaned: ScrapedLead[] = [];
+
+  for (const lead of leads) {
+    const key = lead.phone ?? lead.website ?? `${lead.name ?? ""}|${lead.address ?? ""}`;
+    if (!key.trim() || seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(lead);
+    if (cleaned.length >= limit) break;
+  }
+
+  return cleaned;
+}
+
 async function scrapeGoogleMaps(query: string, location: string, limit: number, apiKey: string) {
   const params = new URLSearchParams({
     engine: "google_maps",
@@ -26,16 +78,7 @@ async function scrapeGoogleMaps(query: string, location: string, limit: number, 
   const data = await res.json() as { local_results?: any[]; error?: string };
   if (data.error) throw new Error(data.error);
 
-  return (data.local_results || []).slice(0, limit).map((r: any) => ({
-    name: r.title || null,
-    phone: r.phone || null,
-    website: r.website || null,
-    address: r.address || null,
-    rating: r.rating != null ? String(r.rating) : null,
-    reviews: r.reviews || null,
-    category: r.type || r.subtypes?.[0] || null,
-    thumbnailUrl: r.thumbnail || null,
-  }));
+  return cleanAndLimitLeads((data.local_results || []).map(toLead), limit);
 }
 
 async function scrapeGoogleSearch(query: string, location: string, limit: number, apiKey: string) {
@@ -62,33 +105,15 @@ async function scrapeGoogleSearch(query: string, location: string, limit: number
   const results: any[] = [];
 
   for (const r of data.local_results || []) {
-    results.push({
-      name: r.title || null,
-      phone: r.phone || null,
-      website: r.website || null,
-      address: r.address || null,
-      rating: r.rating != null ? String(r.rating) : null,
-      reviews: r.reviews || null,
-      category: null,
-      thumbnailUrl: r.thumbnail || null,
-    });
+    results.push(toLead(r));
   }
 
   for (const r of data.organic_results || []) {
     if (results.length >= limit) break;
-    results.push({
-      name: r.title || null,
-      phone: null,
-      website: r.link || null,
-      address: null,
-      rating: null,
-      reviews: null,
-      category: null,
-      thumbnailUrl: r.thumbnail || null,
-    });
+    results.push(toLead(r));
   }
 
-  return results.slice(0, limit);
+  return cleanAndLimitLeads(results, limit);
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -115,7 +140,7 @@ router.post("/leads/scrape", requireAuth, async (req, res) => {
     return;
   }
 
-  const { query, source, location = "", limit = 10 } = req.body as {
+  const { query, source = "google_maps", location = "", limit = 10 } = req.body as {
     query: string;
     source: "google_maps" | "google_search";
     location?: string;
@@ -128,14 +153,31 @@ router.post("/leads/scrape", requireAuth, async (req, res) => {
   }
 
   try {
-    const raw = source === "google_maps"
-      ? await scrapeGoogleMaps(query.trim(), location.trim(), limit, apiKey)
-      : await scrapeGoogleSearch(query.trim(), location.trim(), limit, apiKey);
+    const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 20);
+    const searchSource = source === "google_search" ? "google_search" : "google_maps";
+    const raw = searchSource === "google_maps"
+      ? await scrapeGoogleMaps(query.trim(), location.trim(), safeLimit, apiKey)
+      : await scrapeGoogleSearch(query.trim(), location.trim(), safeLimit, apiKey);
+
+    if (!raw.length) {
+      await incrementScrapeSession(user.id);
+      const updatedLimits = await getPlanLimits(user.id);
+      res.json({
+        leads: [],
+        total: 0,
+        usage: {
+          scrapeSessionsUsed: updatedLimits.scrapeSessionsUsed,
+          scrapeSessionsMax: updatedLimits.scrapeSessionsMax,
+          isPremium: updatedLimits.isPremium,
+        },
+      });
+      return;
+    }
 
     const saved = await db.insert(leadsTable).values(
       raw.map((l: any) => ({
         userId: user.id,
-        source,
+        source: searchSource,
         query: query.trim(),
         location: location.trim() || null,
         ...l,
