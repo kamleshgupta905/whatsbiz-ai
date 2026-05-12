@@ -10,6 +10,7 @@ import {
   updateAIEnabled,
   connectCloudApiSession,
   getCloudApiConnection,
+  sendAdminAlert,
 } from "../lib/whatsapp-manager.js";
 
 const router = Router();
@@ -116,6 +117,14 @@ router.post("/whatsapp/api-connect", requireAuth, async (req, res) => {
     businessAccountId,
     displayPhoneNumber,
   });
+
+  void sendAdminAlert([
+    "WhatsBiz AI alert",
+    "WhatsApp API connected",
+    `User: ${user.name} (${user.email})`,
+    `Business: ${user.businessName}`,
+    `Number: ${displayPhoneNumber?.trim() || "not provided"}`,
+  ].join("\n"));
 
   res.json({
     status: "connected",

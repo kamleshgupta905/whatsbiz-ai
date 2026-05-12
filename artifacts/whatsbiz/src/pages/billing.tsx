@@ -16,10 +16,19 @@ export default function Billing() {
 
   const [paymentData, setPaymentData] = useState<any>(null);
   const [utr, setUtr] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"UPI" | "CARD" | "PAYPAL">("UPI");
+  const [paymentError, setPaymentError] = useState<{ reason: string; solution: string } | null>(null);
 
   const handleUpgrade = (planId: "STARTER" | "PRO" | "BUSINESS") => {
-    initiatePayment.mutate({ data: { plan: planId } }, {
-      onSuccess: (data) => setPaymentData(data)
+    setPaymentError(null);
+    initiatePayment.mutate({ data: { plan: planId, paymentMethod } as any }, {
+      onSuccess: (data) => setPaymentData(data),
+      onError: (err: any) => {
+        setPaymentError({
+          reason: err?.response?.data?.reason || err?.message || "Payment method is not available.",
+          solution: err?.response?.data?.solution || "Use UPI payment, or ask admin to configure a live payment gateway.",
+        });
+      },
     });
   };
 
@@ -113,6 +122,31 @@ export default function Billing() {
               <CardTitle>Upgrade Plan</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-2">
+                {(["UPI", "CARD", "PAYPAL"] as const).map((method) => (
+                  <Button
+                    key={method}
+                    type="button"
+                    variant={paymentMethod === method ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setPaymentMethod(method)}
+                  >
+                    {method === "CARD" ? "Card" : method}
+                  </Button>
+                ))}
+              </div>
+              {paymentMethod !== "UPI" && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  {paymentMethod} gateway is not configured yet. UPI is available now; card/PayPal need live gateway keys and webhook verification.
+                </div>
+              )}
+              {paymentError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                  <p className="font-semibold">Payment issue</p>
+                  <p>Reason: {paymentError.reason}</p>
+                  <p>Solution: {paymentError.solution}</p>
+                </div>
+              )}
               <div className="p-4 border rounded-lg hover:border-primary cursor-pointer transition-colors" onClick={() => handleUpgrade("STARTER")}>
                 <div className="flex justify-between items-center mb-1">
                   <h4 className="font-bold">Starter</h4>

@@ -3,6 +3,7 @@ import { db, subscriptionsTable, paymentsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { InitiatePaymentBody, VerifyPaymentBody } from "@workspace/api-zod";
 import { requireAuth, type AuthRequest } from "../lib/auth";
+import { sendAdminAlert } from "../lib/whatsapp-manager";
 
 const router = Router();
 
@@ -36,8 +37,50 @@ const PLANS = [
   },
 ];
 
+const PLAN_BY_ID = Object.fromEntries(PLANS.map((plan) => [plan.id, plan]));
+
+async function activateSubscription(userId: string, planId: keyof typeof PLAN_BY_ID) {
+  const plan = PLAN_BY_ID[planId];
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + 30);
+
+  await db.update(subscriptionsTable)
+    .set({
+      plan: plan.id,
+      status: "ACTIVE",
+      startDate: new Date(),
+      endDate,
+      messagesLimit: plan.messagesLimit,
+      whatsappLimit: plan.whatsappAccounts,
+      updatedAt: new Date(),
+    })
+    .where(eq(subscriptionsTable.userId, userId));
+}
+
 router.get("/billing/plans", async (_req, res) => {
   res.json({ plans: PLANS });
+});
+
+router.get("/billing/payment-methods", async (_req, res) => {
+  res.json({
+    methods: [
+      { id: "UPI", label: "UPI", enabled: true },
+      {
+        id: "CARD",
+        label: "Credit / Debit Card",
+        enabled: Boolean(process.env.RAZORPAY_KEY_ID || process.env.STRIPE_SECRET_KEY),
+        reason: "Card gateway is not configured yet. Add Razorpay or Stripe keys to accept genuine card payments.",
+        solution: "Use UPI manual verification now, or configure Razorpay/Stripe production keys.",
+      },
+      {
+        id: "PAYPAL",
+        label: "PayPal",
+        enabled: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
+        reason: "PayPal credentials are not configured on this server.",
+        solution: "Add PayPal live client ID/secret and webhook verification before enabling PayPal.",
+      },
+    ],
+  });
 });
 
 router.get("/billing/subscription", requireAuth, async (req, res) => {
@@ -79,6 +122,18 @@ router.post("/billing/initiate-payment", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid plan" });
     return;
   }
+  const paymentMethod = String((req.body as { paymentMethod?: string }).paymentMethod ?? "UPI").toUpperCase();
+
+  if (paymentMethod !== "UPI") {
+    res.status(400).json({
+      error: `${paymentMethod} payments are not enabled yet.`,
+      reason: paymentMethod === "PAYPAL"
+        ? "PayPal live credentials and webhook verification are not configured."
+        : "Card gateway production keys and webhook verification are not configured.",
+      solution: "Use UPI for now, or configure Razorpay/Stripe/PayPal live gateway keys first.",
+    });
+    return;
+  }
 
   const txnNote = `WHATSBIZ-${user.id.slice(0, 8)}-${Date.now()}`;
   const upiId = "9315515700-2@ibl";
@@ -88,6 +143,7 @@ router.post("/billing/initiate-payment", requireAuth, async (req, res) => {
     amount: plan.price,
     plan: parsed.data.plan,
     status: "PENDING",
+    paymentMethod,
     upiId,
     txnNote,
     duration: 30,
@@ -108,6 +164,7 @@ router.post("/billing/initiate-payment", requireAuth, async (req, res) => {
       phonepe: `phonepe://${baseUpiUrl}`,
       paytm: `paytmmp://${baseUpiUrl}`,
     },
+    paymentMethod,
   });
 });
 
@@ -123,6 +180,15 @@ router.post("/billing/verify-payment", requireAuth, async (req, res) => {
     .set({ utr: parsed.data.utr, status: "AWAITING_VERIFICATION", updatedAt: new Date() })
     .where(eq(paymentsTable.id, parsed.data.paymentId))
     .returning();
+
+  void sendAdminAlert([
+    "WhatsBiz AI payment alert",
+    "Payment submitted for verification",
+    `User: ${user.name} (${user.email})`,
+    `Plan: ${payment.plan}`,
+    `Amount: INR ${payment.amount}`,
+    `UTR: ${payment.utr}`,
+  ].join("\n"));
 
   res.json({
     id: payment.id,

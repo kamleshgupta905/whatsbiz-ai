@@ -6,7 +6,7 @@ import makeWASocket, {
   type WASocket,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
-import { db, whatsappSessionsTable, knowledgeBaseTable, contactsTable, conversationsTable, messagesTable } from "@workspace/db";
+import { db, usersTable, whatsappSessionsTable, knowledgeBaseTable, contactsTable, conversationsTable, messagesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import qrcode from "qrcode";
 import { mkdir, rm } from "fs/promises";
@@ -36,6 +36,7 @@ const sessions = new Map<string, SessionState>();
 const healthTimers = new Map<string, ReturnType<typeof setInterval>>();
 const kbCache = new Map<string, KBCache>();
 const KB_TTL_MS = 120_000; // 2 minutes
+const ADMIN_ALERT_EMAIL = process.env.ADMIN_ALERT_EMAIL ?? "kamleshg9569@gmail.com";
 
 type CloudApiConfig = {
   mode: "cloud_api";
@@ -397,6 +398,12 @@ async function createSocket(userId: string, state: SessionState, authDir: string
               updatedAt: new Date(),
             })
             .where(eq(whatsappSessionsTable.userId, userId));
+          void sendAdminAlert([
+            "WhatsBiz AI alert",
+            "WhatsApp QR connected",
+            `User ID: ${userId}`,
+            `Number: ${phone ? `+${phone}` : "unknown"}`,
+          ].join("\n"));
         }
       } catch (err) {
         console.error(`[WA] connection.update handler error for user ${userId}:`, err);
@@ -556,6 +563,36 @@ async function sendCloudApiText(config: CloudApiConfig, phone: string, message: 
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Cloud API send failed: ${body}`);
+  }
+}
+
+export async function sendWhatsAppText(userId: string, phone: string, message: string): Promise<void> {
+  const [dbSession] = await db.select({ sessionData: whatsappSessionsTable.sessionData })
+    .from(whatsappSessionsTable)
+    .where(eq(whatsappSessionsTable.userId, userId));
+  const cloudConfig = parseCloudConfig(dbSession?.sessionData ?? null);
+
+  if (cloudConfig) {
+    await sendCloudApiText(cloudConfig, phone, message);
+    return;
+  }
+
+  const state = sessions.get(userId);
+  if (!state?.socket || state.status !== "connected") {
+    throw new Error("WhatsApp not connected");
+  }
+
+  const jid = phone.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
+  await state.socket.sendMessage(jid, { text: message });
+}
+
+export async function sendAdminAlert(message: string): Promise<void> {
+  try {
+    const [admin] = await db.select().from(usersTable).where(eq(usersTable.email, ADMIN_ALERT_EMAIL));
+    if (!admin?.phone) return;
+    await sendWhatsAppText(admin.id, admin.phone, message);
+  } catch (err) {
+    console.error("[WA] Admin alert failed:", err instanceof Error ? err.message : err);
   }
 }
 

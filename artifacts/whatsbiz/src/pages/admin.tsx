@@ -43,6 +43,21 @@ interface Stats {
   planBreakdown: { plan: string; count: number }[];
 }
 
+interface AdminPayment {
+  id: string;
+  userName: string | null;
+  userEmail: string | null;
+  businessName: string | null;
+  amount: number;
+  currency: string;
+  plan: string;
+  status: string;
+  paymentMethod: string;
+  utr: string | null;
+  txnNote: string | null;
+  createdAt: string;
+}
+
 const PLAN_COLORS: Record<string, string> = {
   TRIAL:    "bg-gray-100 text-gray-700 border-gray-200",
   STARTER:  "bg-blue-50 text-blue-700 border-blue-200",
@@ -75,6 +90,7 @@ export default function AdminPanel() {
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -89,12 +105,14 @@ export default function AdminPanel() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [usersData, statsData] = await Promise.all([
+      const [usersData, statsData, paymentsData] = await Promise.all([
         adminApi("/api/admin/users"),
         adminApi("/api/admin/stats"),
+        adminApi("/api/admin/payments"),
       ]);
       setUsers(usersData.users);
       setStats(statsData);
+      setPayments(paymentsData.payments ?? []);
     } catch (e) {
       toast({ variant: "destructive", title: "Failed to load admin data", description: (e as Error).message });
     } finally {
@@ -130,6 +148,15 @@ export default function AdminPanel() {
 
   const resetScrapes = (userId: string) =>
     doAction(userId, "Reset scrapes", () => adminApi(`/api/admin/users/${userId}/reset-scrapes`, "POST"));
+
+  const approvePayment = (paymentId: string) =>
+    doAction(paymentId, "Approve payment", () => adminApi(`/api/admin/payments/${paymentId}/approve`, "POST"));
+
+  const rejectPayment = (paymentId: string) =>
+    doAction(paymentId, "Reject payment", () => adminApi(`/api/admin/payments/${paymentId}/reject`, "POST", {
+      reason: "Payment is not genuine or UTR could not be matched.",
+      solution: "Ask user to share correct UTR/screenshot or pay again using the official UPI link.",
+    }));
 
   const filtered = users.filter(u =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -216,6 +243,68 @@ export default function AdminPanel() {
           ))}
         </div>
       )}
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <Crown className="w-5 h-5" /> Payment Verification
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {payments.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">No payments yet</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30 text-muted-foreground text-xs">
+                    <th className="text-left px-4 py-3 font-medium">User</th>
+                    <th className="text-left px-4 py-3 font-medium">Plan</th>
+                    <th className="text-left px-4 py-3 font-medium">Amount</th>
+                    <th className="text-left px-4 py-3 font-medium">UTR</th>
+                    <th className="text-left px-4 py-3 font-medium">Status</th>
+                    <th className="text-right px-4 py-3 font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.slice(0, 8).map((p) => {
+                    const busy = actionLoading?.startsWith(p.id);
+                    const actionable = p.status === "AWAITING_VERIFICATION" || p.status === "PENDING";
+                    return (
+                      <tr key={p.id} className="border-b last:border-0">
+                        <td className="px-4 py-3">
+                          <div className="font-medium">{p.userName ?? "Unknown"}</div>
+                          <div className="text-xs text-muted-foreground">{p.userEmail}</div>
+                        </td>
+                        <td className="px-4 py-3">{p.plan}</td>
+                        <td className="px-4 py-3">{p.currency} {p.amount}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{p.utr ?? p.txnNote ?? "-"}</td>
+                        <td className="px-4 py-3">
+                          <Badge variant={p.status === "COMPLETED" ? "default" : p.status === "FAILED" ? "destructive" : "secondary"}>
+                            {p.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {busy ? (
+                            <Loader2 className="w-4 h-4 animate-spin ml-auto" />
+                          ) : actionable ? (
+                            <div className="flex justify-end gap-2">
+                              <Button size="sm" className="h-8" onClick={() => approvePayment(p.id)}>Approve</Button>
+                              <Button size="sm" variant="outline" className="h-8" onClick={() => rejectPayment(p.id)}>Reject</Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Done</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* User table */}
       <Card>

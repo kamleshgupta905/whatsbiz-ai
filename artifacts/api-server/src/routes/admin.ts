@@ -1,9 +1,17 @@
 import { Router } from "express";
-import { db, usersTable, subscriptionsTable } from "@workspace/db";
+import { db, usersTable, subscriptionsTable, paymentsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../lib/auth";
+import { sendAdminAlert, sendWhatsAppText } from "../lib/whatsapp-manager";
 
 const router = Router();
+
+const PLAN_LIMITS: Record<string, { messagesLimit: number; whatsappLimit: number }> = {
+  TRIAL: { messagesLimit: 100, whatsappLimit: 1 },
+  STARTER: { messagesLimit: 500, whatsappLimit: 1 },
+  PRO: { messagesLimit: 3000, whatsappLimit: 2 },
+  BUSINESS: { messagesLimit: 10000, whatsappLimit: 5 },
+};
 
 function requireAdmin(req: Parameters<typeof requireAuth>[0], res: Parameters<typeof requireAuth>[1], next: Parameters<typeof requireAuth>[2]) {
   requireAuth(req, res, () => {
@@ -55,10 +63,18 @@ router.patch("/admin/users/:id/plan", requireAdmin, async (req, res) => {
 
   const endDate = plan === "TRIAL" ? new Date(Date.now() + 2 * 86400_000) : new Date("2099-12-31");
   const status = plan === "TRIAL" ? "TRIAL" : "ACTIVE";
+  const limits = PLAN_LIMITS[plan];
 
   const [sub] = await db
     .update(subscriptionsTable)
-    .set({ plan: plan as any, status: status as any, endDate, updatedAt: new Date() })
+    .set({
+      plan: plan as any,
+      status: status as any,
+      endDate,
+      messagesLimit: limits.messagesLimit,
+      whatsappLimit: limits.whatsappLimit,
+      updatedAt: new Date(),
+    })
     .where(eq(subscriptionsTable.userId, id))
     .returning();
 
@@ -146,6 +162,124 @@ router.get("/admin/stats", requireAdmin, async (_req, res) => {
     activeUsers: Number(activeCount?.count ?? 0),
     planBreakdown: planBreakdown.map(r => ({ plan: r.plan, count: Number(r.count) })),
   });
+});
+
+router.get("/admin/payments", requireAdmin, async (_req, res) => {
+  const rows = await db
+    .select({
+      id: paymentsTable.id,
+      userId: paymentsTable.userId,
+      userName: usersTable.name,
+      userEmail: usersTable.email,
+      userPhone: usersTable.phone,
+      businessName: usersTable.businessName,
+      amount: paymentsTable.amount,
+      currency: paymentsTable.currency,
+      plan: paymentsTable.plan,
+      status: paymentsTable.status,
+      paymentMethod: paymentsTable.paymentMethod,
+      utr: paymentsTable.utr,
+      txnNote: paymentsTable.txnNote,
+      createdAt: paymentsTable.createdAt,
+      paidAt: paymentsTable.paidAt,
+      verifiedAt: paymentsTable.verifiedAt,
+    })
+    .from(paymentsTable)
+    .leftJoin(usersTable, eq(usersTable.id, paymentsTable.userId))
+    .orderBy(sql`${paymentsTable.createdAt} DESC`)
+    .limit(100);
+
+  res.json({ payments: rows });
+});
+
+router.post("/admin/payments/:id/approve", requireAdmin, async (req, res) => {
+  const admin = (req as AuthRequest).user;
+  const id = req.params.id as string;
+
+  const [payment] = await db.update(paymentsTable)
+    .set({
+      status: "COMPLETED",
+      paidAt: new Date(),
+      verifiedAt: new Date(),
+      verifiedBy: admin.id,
+      invoiceNumber: `WB-${Date.now()}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(paymentsTable.id, id))
+    .returning();
+
+  if (!payment) {
+    res.status(404).json({ error: "Payment not found" });
+    return;
+  }
+
+  const limits = PLAN_LIMITS[payment.plan];
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + (payment.duration || 30));
+
+  await db.update(subscriptionsTable)
+    .set({
+      plan: payment.plan,
+      status: "ACTIVE",
+      startDate: new Date(),
+      endDate,
+      messagesLimit: limits.messagesLimit,
+      whatsappLimit: limits.whatsappLimit,
+      updatedAt: new Date(),
+    })
+    .where(eq(subscriptionsTable.userId, payment.userId));
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId));
+  if (user) {
+    void sendWhatsAppText(user.id, user.phone, `Payment verified. Your ${payment.plan} plan is active for ${payment.duration || 30} days. Thank you for subscribing to WhatsBiz AI.`).catch(() => {});
+    void sendAdminAlert([
+      "WhatsBiz AI subscription alert",
+      "Payment approved and premium activated",
+      `User: ${user.name} (${user.email})`,
+      `Plan: ${payment.plan}`,
+      `Amount: ${payment.currency} ${payment.amount}`,
+      `Method: ${payment.paymentMethod}`,
+    ].join("\n"));
+  }
+
+  res.json({ success: true, paymentId: payment.id, plan: payment.plan, status: "COMPLETED" });
+});
+
+router.post("/admin/payments/:id/reject", requireAdmin, async (req, res) => {
+  const admin = (req as AuthRequest).user;
+  const id = req.params.id as string;
+  const { reason = "Payment could not be verified.", solution = "Please share a valid UTR/screenshot or retry using UPI." } =
+    req.body as { reason?: string; solution?: string };
+
+  const [payment] = await db.update(paymentsTable)
+    .set({
+      status: "FAILED",
+      verifiedAt: new Date(),
+      verifiedBy: admin.id,
+      refundReason: `${reason}\nSolution: ${solution}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(paymentsTable.id, id))
+    .returning();
+
+  if (!payment) {
+    res.status(404).json({ error: "Payment not found" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId));
+  if (user) {
+    void sendWhatsAppText(user.id, user.phone, `Payment verification failed.\nReason: ${reason}\nSolution: ${solution}`).catch(() => {});
+    void sendAdminAlert([
+      "WhatsBiz AI payment alert",
+      "Payment rejected",
+      `User: ${user.name} (${user.email})`,
+      `Plan: ${payment.plan}`,
+      `Reason: ${reason}`,
+    ].join("\n"));
+  }
+
+  res.json({ success: true, paymentId: payment.id, status: "FAILED", reason, solution });
 });
 
 export default router;
