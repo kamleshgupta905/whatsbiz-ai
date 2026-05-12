@@ -66,13 +66,6 @@ router.get("/billing/payment-methods", async (_req, res) => {
     methods: [
       { id: "UPI", label: "UPI", enabled: true },
       {
-        id: "CARD",
-        label: "Credit / Debit Card",
-        enabled: Boolean(process.env.RAZORPAY_KEY_ID || process.env.STRIPE_SECRET_KEY),
-        reason: "Card gateway is not configured yet. Add Razorpay or Stripe keys to accept genuine card payments.",
-        solution: "Use UPI manual verification now, or configure Razorpay/Stripe production keys.",
-      },
-      {
         id: "PAYPAL",
         label: "PayPal",
         enabled: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
@@ -124,13 +117,20 @@ router.post("/billing/initiate-payment", requireAuth, async (req, res) => {
   }
   const paymentMethod = String((req.body as { paymentMethod?: string }).paymentMethod ?? "UPI").toUpperCase();
 
+  if (paymentMethod === "CARD") {
+    res.status(400).json({
+      error: "Card payments are not available.",
+      reason: "Card option has been disabled for this product.",
+      solution: "Use UPI or PayPal when PayPal is enabled.",
+    });
+    return;
+  }
+
   if (paymentMethod !== "UPI") {
     res.status(400).json({
       error: `${paymentMethod} payments are not enabled yet.`,
-      reason: paymentMethod === "PAYPAL"
-        ? "PayPal live credentials and webhook verification are not configured."
-        : "Card gateway production keys and webhook verification are not configured.",
-      solution: "Use UPI for now, or configure Razorpay/Stripe/PayPal live gateway keys first.",
+      reason: "PayPal live credentials and webhook verification are not configured.",
+      solution: "Use UPI for now, or configure PayPal live gateway keys first.",
     });
     return;
   }

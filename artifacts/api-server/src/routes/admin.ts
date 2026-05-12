@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, usersTable, subscriptionsTable, paymentsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import { requireAuth, type AuthRequest } from "../lib/auth";
+import { generateToken, requireAuth, storeToken, type AuthRequest } from "../lib/auth";
 import { sendAdminAlert, sendWhatsAppText } from "../lib/whatsapp-manager";
 
 const router = Router();
@@ -149,6 +149,38 @@ router.post("/admin/users/:id/reset-scrapes", requireAdmin, async (req, res) => 
 });
 
 // ─── Stats overview ───────────────────────────────────────────────────────────
+router.post("/admin/users/:id/impersonate", requireAdmin, async (req, res) => {
+  const admin = (req as AuthRequest).user;
+  const id = req.params.id as string;
+
+  const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!target) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const token = generateToken(target.id);
+  storeToken(token, target.id);
+
+  void sendAdminAlert([
+    "WhatsBiz AI admin access",
+    `Admin ${admin.email} opened user account`,
+    `User: ${target.name} (${target.email})`,
+    `Business: ${target.businessName}`,
+  ].join("\n"));
+
+  res.json({
+    token,
+    user: {
+      id: target.id,
+      name: target.name,
+      email: target.email,
+      businessName: target.businessName,
+      role: target.role,
+    },
+  });
+});
+
 router.get("/admin/stats", requireAdmin, async (_req, res) => {
   const [userCount] = await db.select({ count: sql<number>`count(*)` }).from(usersTable);
   const [activeCount] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.isActive, true));

@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import {
   Shield, Users, Crown, RefreshCw, Ban, CheckCircle2,
-  Loader2, ChevronDown, BarChart3, TrendingUp, UserCheck, UserX
+  Loader2, ChevronDown, BarChart3, TrendingUp, UserCheck, UserX, LogIn
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -157,6 +157,22 @@ export default function AdminPanel() {
       reason: "Payment is not genuine or UTR could not be matched.",
       solution: "Ask user to share correct UTR/screenshot or pay again using the official UPI link.",
     }));
+
+  const openUserAccount = async (target: AdminUser) => {
+    setActionLoading(target.id + "Open");
+    try {
+      const adminToken = localStorage.getItem("token");
+      if (adminToken) sessionStorage.setItem("adminToken", adminToken);
+      const data = await adminApi(`/api/admin/users/${target.id}/impersonate`, "POST");
+      localStorage.setItem("token", data.token);
+      toast({ title: "User account opened", description: `Now viewing ${target.email}` });
+      window.location.href = "/dashboard";
+    } catch (e) {
+      toast({ variant: "destructive", title: "Open account failed", description: (e as Error).message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const filtered = users.filter(u =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -416,6 +432,15 @@ export default function AdminPanel() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel className="text-xs text-muted-foreground">Account</DropdownMenuLabel>
+                                <DropdownMenuItem
+                                  onClick={() => openUserAccount(u)}
+                                  className="text-xs cursor-pointer gap-2"
+                                >
+                                  <LogIn className="w-3 h-3" /> Open Account
+                                </DropdownMenuItem>
+
+                                <DropdownMenuSeparator />
                                 <DropdownMenuLabel className="text-xs text-muted-foreground">Change Plan</DropdownMenuLabel>
                                 {["TRIAL", "STARTER", "PRO", "BUSINESS"].map(plan => (
                                   <DropdownMenuItem

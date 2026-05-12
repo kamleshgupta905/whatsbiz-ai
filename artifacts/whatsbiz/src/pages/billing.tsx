@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useGetSubscription, useListPayments, useInitiatePayment, useVerifyPayment } from "@workspace/api-client-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, CreditCard, ExternalLink, QrCode } from "lucide-react";
+import { ExternalLink, QrCode } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function Billing() {
@@ -16,7 +16,7 @@ export default function Billing() {
 
   const [paymentData, setPaymentData] = useState<any>(null);
   const [utr, setUtr] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"UPI" | "CARD" | "PAYPAL">("UPI");
+  const [paymentMethod, setPaymentMethod] = useState<"UPI" | "PAYPAL">("UPI");
   const [paymentError, setPaymentError] = useState<{ reason: string; solution: string } | null>(null);
 
   const handleUpgrade = (planId: "STARTER" | "PRO" | "BUSINESS") => {
@@ -26,7 +26,7 @@ export default function Billing() {
       onError: (err: any) => {
         setPaymentError({
           reason: err?.response?.data?.reason || err?.message || "Payment method is not available.",
-          solution: err?.response?.data?.solution || "Use UPI payment, or ask admin to configure a live payment gateway.",
+                  solution: err?.response?.data?.solution || "Use UPI payment, or ask admin to configure PayPal live gateway.",
         });
       },
     });
@@ -123,7 +123,7 @@ export default function Billing() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-2">
-                {(["UPI", "CARD", "PAYPAL"] as const).map((method) => (
+                {(["UPI", "PAYPAL"] as const).map((method) => (
                   <Button
                     key={method}
                     type="button"
@@ -131,13 +131,13 @@ export default function Billing() {
                     size="sm"
                     onClick={() => setPaymentMethod(method)}
                   >
-                    {method === "CARD" ? "Card" : method}
+                    {method}
                   </Button>
                 ))}
               </div>
               {paymentMethod !== "UPI" && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                  {paymentMethod} gateway is not configured yet. UPI is available now; card/PayPal need live gateway keys and webhook verification.
+                  PayPal gateway is not configured yet. UPI is available now; PayPal needs live gateway keys and webhook verification.
                 </div>
               )}
               {paymentError && (
