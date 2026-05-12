@@ -3,28 +3,54 @@ import { db, whatsappSessionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpdateWhatsappSettingsBody } from "@workspace/api-zod";
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
-import { startSession, disconnectSession, getSession, updateAIEnabled } from "../lib/whatsapp-manager.js";
+import {
+  startSession,
+  disconnectSession,
+  getSession,
+  updateAIEnabled,
+  connectCloudApiSession,
+  getCloudApiConnection,
+} from "../lib/whatsapp-manager.js";
 
 const router = Router();
 
 router.get("/whatsapp/status", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
   const [session] = await db.select().from(whatsappSessionsTable).where(eq(whatsappSessionsTable.userId, user.id));
-
   const inMemory = getSession(user.id);
 
   res.set("Cache-Control", "no-store, no-cache, must-revalidate");
   res.set("Pragma", "no-cache");
   res.set("Expires", "0");
 
-  // If no in-memory session exists, the Baileys socket is gone (server restart or never started).
-  // DB may still say "connected" from before — always return "disconnected" in that case.
-  const liveStatus = inMemory?.status ?? "disconnected";
-  const livePhone = liveStatus === "connected" ? (inMemory?.phoneNumber ?? session?.phoneNumber ?? null) : null;
+  const cloudApi = await getCloudApiConnection(user.id);
+  if (cloudApi) {
+    res.json({
+      status: "connected",
+      phoneNumber: session?.phoneNumber ?? cloudApi.displayPhoneNumber ?? null,
+      connectionMode: "cloud_api",
+      lastConnected: session?.lastConnected ?? null,
+      isAIEnabled: session?.isAIEnabled ?? true,
+      awayMessage: session?.awayMessage ?? null,
+      workingHours: session?.workingHours ?? null,
+    });
+    return;
+  }
+
+  let liveStatus = inMemory?.status ?? session?.status ?? "disconnected";
+  if (!inMemory && session?.status === "connected") {
+    liveStatus = "connecting";
+    startSession(user.id, false).catch(() => {});
+  }
+
+  const livePhone = liveStatus === "connected" || liveStatus === "connecting"
+    ? (inMemory?.phoneNumber ?? session?.phoneNumber ?? null)
+    : null;
 
   res.json({
     status: liveStatus,
     phoneNumber: livePhone,
+    connectionMode: "qr_linked_device",
     lastConnected: session?.lastConnected ?? null,
     isAIEnabled: session?.isAIEnabled ?? true,
     awayMessage: session?.awayMessage ?? null,
@@ -59,10 +85,43 @@ router.get("/whatsapp/qr", requireAuth, async (req, res) => {
 router.post("/whatsapp/connect", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
 
-  // forceNew=true wipes stale credentials so a fresh QR is always generated
   startSession(user.id, true).catch(() => {});
 
   res.json({ status: "connecting", message: "Session started. Poll /whatsapp/qr for QR code." });
+});
+
+router.get("/whatsapp/api-config", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const config = await getCloudApiConnection(user.id);
+  res.json({ configured: Boolean(config), config });
+});
+
+router.post("/whatsapp/api-connect", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const {
+    phoneNumberId,
+    accessToken,
+    businessAccountId,
+    displayPhoneNumber,
+  } = req.body as Record<string, string | undefined>;
+
+  if (!phoneNumberId?.trim() || !accessToken?.trim()) {
+    res.status(400).json({ error: "Phone Number ID and Access Token are required." });
+    return;
+  }
+
+  await connectCloudApiSession(user.id, {
+    phoneNumberId,
+    accessToken,
+    businessAccountId,
+    displayPhoneNumber,
+  });
+
+  res.json({
+    status: "connected",
+    connectionMode: "cloud_api",
+    phoneNumber: displayPhoneNumber?.trim() || null,
+  });
 });
 
 router.post("/whatsapp/disconnect", requireAuth, async (req, res) => {
@@ -84,7 +143,6 @@ router.put("/whatsapp/settings", requireAuth, async (req, res) => {
     .where(eq(whatsappSessionsTable.userId, user.id))
     .returning();
 
-  // Sync in-memory AI flag immediately — no restart needed
   if (parsed.data.isAIEnabled !== undefined) {
     updateAIEnabled(user.id, updated.isAIEnabled);
   }
@@ -92,6 +150,7 @@ router.put("/whatsapp/settings", requireAuth, async (req, res) => {
   res.json({
     status: updated.status,
     phoneNumber: updated.phoneNumber ?? null,
+    connectionMode: (await getCloudApiConnection(user.id)) ? "cloud_api" : "qr_linked_device",
     lastConnected: updated.lastConnected ?? null,
     isAIEnabled: updated.isAIEnabled,
     awayMessage: updated.awayMessage ?? null,

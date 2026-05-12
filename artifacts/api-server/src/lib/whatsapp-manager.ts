@@ -23,6 +23,7 @@ interface SessionState {
   status: "connecting" | "qr_ready" | "connected" | "disconnected";
   phoneNumber: string | null;
   retryCount: number;
+  healthFailures: number;
   isAIEnabled: boolean;
 }
 
@@ -35,6 +36,15 @@ const sessions = new Map<string, SessionState>();
 const healthTimers = new Map<string, ReturnType<typeof setInterval>>();
 const kbCache = new Map<string, KBCache>();
 const KB_TTL_MS = 120_000; // 2 minutes
+
+type CloudApiConfig = {
+  mode: "cloud_api";
+  phoneNumberId: string;
+  accessToken: string;
+  businessAccountId?: string | null;
+  displayPhoneNumber?: string | null;
+  connectedAt: string;
+};
 
 function getAuthDir(userId: string): string {
   // Use persistent workspace dir so creds survive server restarts
@@ -70,16 +80,27 @@ function startHealthCheck(userId: string, state: SessionState) {
     const alive = await pingSocket(state.socket);
 
     if (!alive) {
-      state.status = "disconnected";
+      state.healthFailures++;
+      if (state.healthFailures < 3) return;
+
+      state.status = "connecting";
       state.socket = null;
       state.qrBase64 = null;
-      state.phoneNumber = null;
       clearHealthTimer(userId);
       await db.update(whatsappSessionsTable)
-        .set({ status: "disconnected", phoneNumber: null, sessionData: null, qrCode: null, lastDisconnect: new Date(), updatedAt: new Date() })
+        .set({ status: "connecting", qrCode: null, updatedAt: new Date() })
         .where(eq(whatsappSessionsTable.userId, userId));
+
+      const authDir = getAuthDir(userId);
+      void createSocket(userId, state, authDir).catch(async () => {
+        await db.update(whatsappSessionsTable)
+          .set({ status: "disconnected", lastDisconnect: new Date(), updatedAt: new Date() })
+          .where(eq(whatsappSessionsTable.userId, userId));
+      });
+    } else {
+      state.healthFailures = 0;
     }
-  }, 20_000);
+  }, 60_000);
   healthTimers.set(userId, timer);
 }
 
@@ -112,6 +133,7 @@ export async function startSession(userId: string, forceNew = false): Promise<vo
     status: "connecting",
     phoneNumber: null,
     retryCount: 0,
+    healthFailures: 0,
     isAIEnabled: dbSession?.isAIEnabled ?? false,
   };
   sessions.set(userId, state);
@@ -341,7 +363,10 @@ async function createSocket(userId: string, state: SessionState, authDir: string
           } else if (shouldReconnect) {
             state.retryCount++;
             state.status = "connecting";
-            state.phoneNumber = null;
+            state.qrBase64 = null;
+            await db.update(whatsappSessionsTable)
+              .set({ status: "connecting", qrCode: null, updatedAt: new Date() })
+              .where(eq(whatsappSessionsTable.userId, userId));
             await createSocket(userId, state, authDir);
           } else {
             state.status = "disconnected";
@@ -360,9 +385,17 @@ async function createSocket(userId: string, state: SessionState, authDir: string
           state.phoneNumber = phone;
           state.qrBase64 = null;
           state.retryCount = 0;
+          state.healthFailures = 0;
           startHealthCheck(userId, state);
           await db.update(whatsappSessionsTable)
-            .set({ status: "connected", phoneNumber: phone ? `+${phone}` : null, qrCode: null, lastConnected: new Date(), updatedAt: new Date() })
+            .set({
+              status: "connected",
+              phoneNumber: phone ? `+${phone}` : null,
+              qrCode: null,
+              sessionData: JSON.stringify({ mode: "qr_linked_device" }),
+              lastConnected: new Date(),
+              updatedAt: new Date(),
+            })
             .where(eq(whatsappSessionsTable.userId, userId));
         }
       } catch (err) {
@@ -450,6 +483,82 @@ export function updateAIEnabled(userId: string, enabled: boolean): void {
   if (state) state.isAIEnabled = enabled;
 }
 
+function parseCloudConfig(raw: string | null): CloudApiConfig | null {
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw) as Partial<CloudApiConfig>;
+    if (data.mode === "cloud_api" && data.phoneNumberId && data.accessToken) {
+      return data as CloudApiConfig;
+    }
+  } catch {}
+  return null;
+}
+
+export async function connectCloudApiSession(
+  userId: string,
+  config: Omit<CloudApiConfig, "mode" | "connectedAt">,
+): Promise<void> {
+  clearHealthTimer(userId);
+  const existing = sessions.get(userId);
+  if (existing?.socket) {
+    try { existing.socket.end(undefined); } catch {}
+  }
+  sessions.delete(userId);
+
+  const cloudConfig: CloudApiConfig = {
+    mode: "cloud_api",
+    phoneNumberId: config.phoneNumberId.trim(),
+    accessToken: config.accessToken.trim(),
+    businessAccountId: config.businessAccountId?.trim() || null,
+    displayPhoneNumber: config.displayPhoneNumber?.trim() || null,
+    connectedAt: new Date().toISOString(),
+  };
+
+  await db.update(whatsappSessionsTable)
+    .set({
+      status: "connected",
+      phoneNumber: cloudConfig.displayPhoneNumber,
+      sessionData: JSON.stringify(cloudConfig),
+      qrCode: null,
+      lastConnected: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(whatsappSessionsTable.userId, userId));
+}
+
+export async function getCloudApiConnection(userId: string): Promise<Omit<CloudApiConfig, "accessToken"> | null> {
+  const [session] = await db.select({ sessionData: whatsappSessionsTable.sessionData })
+    .from(whatsappSessionsTable)
+    .where(eq(whatsappSessionsTable.userId, userId));
+  const config = parseCloudConfig(session?.sessionData ?? null);
+  if (!config) return null;
+  const { accessToken: _accessToken, ...safeConfig } = config;
+  return safeConfig;
+}
+
+async function sendCloudApiText(config: CloudApiConfig, phone: string, message: string): Promise<void> {
+  const to = phone.replace(/[^0-9]/g, "");
+  const res = await fetch(`https://graph.facebook.com/v20.0/${config.phoneNumberId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "text",
+      text: { preview_url: false, body: message },
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Cloud API send failed: ${body}`);
+  }
+}
+
 // ─── Safe broadcast constants (WhatsApp ban prevention) ──────────────────────
 // Rules:
 //   • Max 200 messages per broadcast (daily safe limit for non-business accounts)
@@ -484,11 +593,16 @@ export async function sendBroadcastMessages(
   message: string,
   onProgress?: (sent: number, failed: number) => void
 ): Promise<{ sent: number; failed: number }> {
+  const [dbSession] = await db.select({ sessionData: whatsappSessionsTable.sessionData })
+    .from(whatsappSessionsTable)
+    .where(eq(whatsappSessionsTable.userId, userId));
+  const cloudConfig = parseCloudConfig(dbSession?.sessionData ?? null);
+
   const state = sessions.get(userId);
-  if (!state?.socket || state.status !== "connected") {
+  if (!cloudConfig && (!state?.socket || state.status !== "connected")) {
     throw new Error("WhatsApp not connected");
   }
-  const sock = state.socket;
+  const sock = state?.socket ?? null;
   let sent = 0;
   let failed = 0;
 
@@ -500,7 +614,11 @@ export async function sendBroadcastMessages(
     try {
       const jid = phone.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
       const personalised = personaliseMessage(message, i);
-      await sock.sendMessage(jid, { text: personalised });
+      if (cloudConfig) {
+        await sendCloudApiText(cloudConfig, phone, message);
+      } else if (sock) {
+        await sock.sendMessage(jid, { text: personalised });
+      }
       sent++;
     } catch {
       failed++;
