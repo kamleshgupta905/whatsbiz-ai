@@ -35,11 +35,15 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
-const nextExportDir = join(process.cwd(), "..", "whatsbiz", "dist");
-const viteDistDir = join(process.cwd(), "..", "whatsbiz", "dist", "public");
-const webDistDir = process.env.WEB_DIST_DIR ?? (existsSync(nextExportDir) ? nextExportDir : viteDistDir);
+const staticDirCandidates = [
+  join(process.cwd(), "artifacts", "whatsbiz", "dist"),
+  join(process.cwd(), "artifacts", "whatsbiz", "dist", "public"),
+  join(process.cwd(), "..", "whatsbiz", "dist"),
+  join(process.cwd(), "..", "whatsbiz", "dist", "public"),
+];
+const webDistDir = process.env.WEB_DIST_DIR ?? staticDirCandidates.find((dir) => existsSync(join(dir, "index.html")));
 
-if (existsSync(webDistDir)) {
+if (webDistDir && existsSync(webDistDir)) {
   app.use(express.static(webDistDir));
   app.use((req, res, next) => {
     if (req.method !== "GET" || req.path.startsWith("/api")) {
