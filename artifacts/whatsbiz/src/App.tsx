@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -6,21 +8,21 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 
-import NotFound from "@/pages/not-found";
-import Landing from "@/pages/index";
-import Login from "@/pages/login";
-import Register from "@/pages/register";
-import Dashboard from "@/pages/dashboard";
-import Onboarding from "@/pages/onboarding";
-import Conversations from "@/pages/conversations";
-import Contacts from "@/pages/contacts";
-import KnowledgeBase from "@/pages/knowledge";
-import Broadcasts from "@/pages/broadcasts";
-import Analytics from "@/pages/analytics";
-import Billing from "@/pages/billing";
-import Settings from "@/pages/settings";
-import Leads from "@/pages/leads";
-import AdminPanel from "@/pages/admin";
+import NotFound from "@/views/not-found";
+import Landing from "@/views/index";
+import Login from "@/views/login";
+import Register from "@/views/register";
+import Dashboard from "@/views/dashboard";
+import Onboarding from "@/views/onboarding";
+import Conversations from "@/views/conversations";
+import Contacts from "@/views/contacts";
+import KnowledgeBase from "@/views/knowledge";
+import Broadcasts from "@/views/broadcasts";
+import Analytics from "@/views/analytics";
+import Billing from "@/views/billing";
+import Settings from "@/views/settings";
+import Leads from "@/views/leads";
+import AdminPanel from "@/views/admin";
 
 const queryClient = new QueryClient();
 
@@ -76,7 +78,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+        <WouterRouter base="/">
           <AuthProvider>
             <Router />
           </AuthProvider>

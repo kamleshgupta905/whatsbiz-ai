@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*"],
+  "include": ["next-env.d.ts", "src/**/*", ".next/types/**/*.ts"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "noEmit": true,
@@ -9,9 +9,11 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
-    "types": ["node", "vite/client"],
+    "noImplicitAny": false,
+    "types": ["node"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@tanstack/react-query": ["./node_modules/@tanstack/react-query"]
     }
   },
   "references": [

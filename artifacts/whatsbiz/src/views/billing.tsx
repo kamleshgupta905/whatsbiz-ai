@@ -22,7 +22,7 @@ export default function Billing() {
   const handleUpgrade = (planId: "STARTER" | "PRO" | "BUSINESS") => {
     setPaymentError(null);
     initiatePayment.mutate({ data: { plan: planId, paymentMethod } as any }, {
-      onSuccess: (data) => setPaymentData(data),
+      onSuccess: (data: any) => setPaymentData(data),
       onError: (err: any) => {
         setPaymentError({
           reason: err?.response?.data?.reason || err?.message || "Payment method is not available.",

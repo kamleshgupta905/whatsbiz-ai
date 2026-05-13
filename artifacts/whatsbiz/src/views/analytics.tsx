@@ -4,6 +4,12 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 
+type TopQuestion = {
+  question: string;
+  category: string;
+  count: number;
+};
+
 export default function Analytics() {
   const [period, setPeriod] = useState<"week" | "month">("week");
   
@@ -133,7 +139,7 @@ export default function Analytics() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topQuestions?.questions?.map((q, i) => (
+              {(topQuestions?.questions as TopQuestion[] | undefined)?.map((q, i) => (
                 <div key={i} className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">

@@ -13,7 +13,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
+  const [token, setToken] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : localStorage.getItem("token")
+  );
   const [, setLocation] = useLocation();
 
   const { data: user, isLoading, error } = useGetMe({
@@ -32,11 +34,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [error]);
 
   const login = (newToken: string) => {
+    if (typeof window === "undefined") return;
     localStorage.setItem("token", newToken);
     setToken(newToken);
   };
 
   const logout = () => {
+    if (typeof window === "undefined") return;
     localStorage.removeItem("token");
     setToken(null);
     setLocation("/login");

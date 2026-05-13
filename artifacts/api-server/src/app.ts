@@ -35,7 +35,9 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
-const webDistDir = process.env.WEB_DIST_DIR ?? join(process.cwd(), "..", "whatsbiz", "dist", "public");
+const nextExportDir = join(process.cwd(), "..", "whatsbiz", "dist");
+const viteDistDir = join(process.cwd(), "..", "whatsbiz", "dist", "public");
+const webDistDir = process.env.WEB_DIST_DIR ?? (existsSync(nextExportDir) ? nextExportDir : viteDistDir);
 
 if (existsSync(webDistDir)) {
   app.use(express.static(webDistDir));
