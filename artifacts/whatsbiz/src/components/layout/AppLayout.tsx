@@ -15,6 +15,7 @@ import {
   Wifi,
   Sparkles,
   Shield,
+  Undo2,
 } from "lucide-react";
 import { useLogout, useGetWhatsappStatus } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -92,9 +93,22 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }, [waStatus?.status, toast]);
 
   const handleLogout = () => {
+    sessionStorage.removeItem("adminToken");
+    sessionStorage.removeItem("impersonatedUserEmail");
     logoutMutation.mutate(undefined, {
       onSettled: () => { logout(); }
     });
+  };
+
+  const isImpersonating = !!sessionStorage.getItem("adminToken");
+  const impersonatedUserEmail = sessionStorage.getItem("impersonatedUserEmail");
+  const returnToAdmin = () => {
+    const adminToken = sessionStorage.getItem("adminToken");
+    if (!adminToken) return;
+    localStorage.setItem("token", adminToken);
+    sessionStorage.removeItem("adminToken");
+    sessionStorage.removeItem("impersonatedUserEmail");
+    window.location.href = "/admin";
   };
 
   const isConnected = waStatus?.status === "connected";
@@ -227,6 +241,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </header>
 
           <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+            {isImpersonating && (
+              <div className="mb-4 flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold">Viewing user account</p>
+                  <p className="text-xs text-amber-800">
+                    Admin mode is open for {impersonatedUserEmail || user?.email || "this user"}. You can view dashboard, chats, contacts, billing, leads and settings as this user.
+                  </p>
+                </div>
+                <Button type="button" size="sm" variant="outline" className="gap-2 border-amber-300 bg-white" onClick={returnToAdmin}>
+                  <Undo2 className="h-4 w-4" />
+                  Back to Admin
+                </Button>
+              </div>
+            )}
             {children}
           </main>
         </div>

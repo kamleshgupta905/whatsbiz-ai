@@ -165,6 +165,7 @@ export default function AdminPanel() {
       if (adminToken) sessionStorage.setItem("adminToken", adminToken);
       const data = await adminApi(`/api/admin/users/${target.id}/impersonate`, "POST");
       localStorage.setItem("token", data.token);
+      sessionStorage.setItem("impersonatedUserEmail", target.email);
       toast({ title: "User account opened", description: `Now viewing ${target.email}` });
       window.location.href = "/dashboard";
     } catch (e) {
