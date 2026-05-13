@@ -36,12 +36,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api", router);
 
 const staticDirCandidates = [
+  process.env.WEB_DIST_DIR,
   join(process.cwd(), "artifacts", "whatsbiz", "dist"),
   join(process.cwd(), "artifacts", "whatsbiz", "dist", "public"),
   join(process.cwd(), "..", "whatsbiz", "dist"),
   join(process.cwd(), "..", "whatsbiz", "dist", "public"),
-];
-const webDistDir = process.env.WEB_DIST_DIR ?? staticDirCandidates.find((dir) => existsSync(join(dir, "index.html")));
+].filter((dir): dir is string => Boolean(dir));
+const webDistDir = staticDirCandidates.find((dir) => existsSync(join(dir, "index.html")));
 
 if (webDistDir && existsSync(webDistDir)) {
   app.use(express.static(webDistDir));
