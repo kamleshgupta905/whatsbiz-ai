@@ -8,7 +8,7 @@ import {
   BookOpen, 
   Megaphone, 
   BarChart, 
-  CreditCard, 
+  Wallet,
   Settings,
   LogOut,
   WifiOff,
@@ -39,7 +39,7 @@ const navItems = [
   { icon: BookOpen,        label: "Knowledge Base",href: "/knowledge" },
   { icon: Megaphone,       label: "Broadcasts",    href: "/broadcasts" },
   { icon: BarChart,        label: "Analytics",     href: "/analytics" },
-  { icon: CreditCard,      label: "Billing",       href: "/billing" },
+  { icon: Wallet,          label: "Billing",       href: "/billing" },
   { icon: Settings,        label: "Settings",      href: "/settings" },
 ];
 

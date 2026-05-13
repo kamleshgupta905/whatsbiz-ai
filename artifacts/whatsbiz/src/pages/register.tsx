@@ -64,7 +64,7 @@ export default function Register() {
         transition={{ duration: 0.45 }}
         className="w-full max-w-md"
       >
-        {/* Card */}
+        {/* Form panel */}
         <div className="bg-card border rounded-3xl shadow-xl shadow-emerald-900/5 overflow-hidden">
           {/* Top gradient band */}
           <div
@@ -81,7 +81,7 @@ export default function Register() {
               </div>
             </div>
             <h1 className="text-2xl font-extrabold text-white tracking-tight">Start Free Trial</h1>
-            <p className="text-emerald-100 text-sm mt-1">14 days free — no credit card needed</p>
+            <p className="text-emerald-100 text-sm mt-1">14 days free. UPI billing available later.</p>
           </div>
 
           <div className="p-8">

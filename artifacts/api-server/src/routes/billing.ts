@@ -117,18 +117,18 @@ router.post("/billing/initiate-payment", requireAuth, async (req, res) => {
   }
   const paymentMethod = String((req.body as { paymentMethod?: string }).paymentMethod ?? "UPI").toUpperCase();
 
-  if (paymentMethod === "CARD") {
+  if (!["UPI", "PAYPAL"].includes(paymentMethod)) {
     res.status(400).json({
-      error: "Card payments are not available.",
-      reason: "Card option has been disabled for this product.",
-      solution: "Use UPI or PayPal when PayPal is enabled.",
+      error: "Payment method is not available.",
+      reason: "Only UPI and PayPal are supported.",
+      solution: "Use UPI now, or PayPal after live gateway credentials are configured.",
     });
     return;
   }
 
-  if (paymentMethod !== "UPI") {
+  if (paymentMethod === "PAYPAL") {
     res.status(400).json({
-      error: `${paymentMethod} payments are not enabled yet.`,
+      error: "PayPal payments are not enabled yet.",
       reason: "PayPal live credentials and webhook verification are not configured.",
       solution: "Use UPI for now, or configure PayPal live gateway keys first.",
     });

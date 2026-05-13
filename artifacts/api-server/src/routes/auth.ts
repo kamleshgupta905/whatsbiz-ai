@@ -3,6 +3,7 @@ import { db, usersTable, subscriptionsTable, knowledgeBaseTable, whatsappSession
 import { eq } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import { hashPassword, generateToken, storeToken, getUserIdFromToken, removeToken, requireAuth, type AuthRequest } from "../lib/auth";
+import { sendAdminAlert } from "../lib/whatsapp-manager";
 
 const router = Router();
 
@@ -91,6 +92,14 @@ router.post("/auth/register", async (req, res) => {
 
   const token = generateToken(user.id);
   storeToken(token, user.id);
+
+  void sendAdminAlert([
+    "WhatsBiz AI new user alert",
+    `Name: ${user.name}`,
+    `Email: ${user.email}`,
+    `Phone: ${user.phone}`,
+    `Business: ${user.businessName}`,
+  ].join("\n"));
 
   res.status(201).json({
     user: {

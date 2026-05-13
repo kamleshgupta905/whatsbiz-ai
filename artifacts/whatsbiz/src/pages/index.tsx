@@ -180,7 +180,7 @@ export default function Landing() {
               <Link href="/register">
                 <Button size="lg" className="text-lg px-8 h-14 w-full sm:w-auto">Start Automating Now</Button>
               </Link>
-              <p className="text-sm text-muted-foreground">No credit card required. 7-day free trial.</p>
+              <p className="text-sm text-muted-foreground">7-day free trial. UPI billing available.</p>
             </div>
           </div>
         </section>
@@ -294,7 +294,7 @@ export default function Landing() {
             <p className="text-primary-foreground/80 mb-8 text-lg md:text-xl">Join 500+ Indian businesses saving hours every day.</p>
             <Link href="/register">
               <Button size="lg" variant="secondary" className="text-lg px-8 sm:px-10 h-14 font-bold w-full sm:w-auto">
-                Start Free Trial — No Card Needed
+                Start Free Trial
               </Button>
             </Link>
           </div>
