@@ -3,7 +3,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import {
   Shield, Users, Crown, RefreshCw, Ban, CheckCircle2,
-  Loader2, ChevronDown, BarChart3, TrendingUp, UserCheck, UserX, LogIn
+  Loader2, ChevronDown, BarChart3, TrendingUp, UserCheck, UserX, LogIn,
+  LogOut, Bell, BellOff, Share2, Linkedin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +59,20 @@ interface AdminPayment {
   createdAt: string;
 }
 
+interface AdminSettings {
+  adminAlertsEnabled: boolean;
+  socialAutoPostEnabled: boolean;
+  linkedinAutoPostEnabled: boolean;
+}
+
+interface SocialConfig {
+  facebookConfigured: boolean;
+  instagramConfigured: boolean;
+  linkedinConfigured: boolean;
+  linkedinImagesConfigured: boolean;
+  publicBaseUrl: string;
+}
+
 const PLAN_COLORS: Record<string, string> = {
   TRIAL:    "bg-gray-100 text-gray-700 border-gray-200",
   STARTER:  "bg-blue-50 text-blue-700 border-blue-200",
@@ -84,13 +99,15 @@ async function adminApi(path: string, method = "GET", body?: unknown) {
 }
 
 export default function AdminPanel() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [payments, setPayments] = useState<AdminPayment[]>([]);
+  const [settings, setSettings] = useState<AdminSettings | null>(null);
+  const [socialConfig, setSocialConfig] = useState<SocialConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -105,14 +122,17 @@ export default function AdminPanel() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [usersData, statsData, paymentsData] = await Promise.all([
+      const [usersData, statsData, paymentsData, settingsData] = await Promise.all([
         adminApi("/api/admin/users"),
         adminApi("/api/admin/stats"),
         adminApi("/api/admin/payments"),
+        adminApi("/api/admin/settings"),
       ]);
       setUsers(usersData.users);
       setStats(statsData);
       setPayments(paymentsData.payments ?? []);
+      setSettings(settingsData.settings);
+      setSocialConfig(settingsData.socialConfig);
     } catch (e) {
       toast({ variant: "destructive", title: "Failed to load admin data", description: (e as Error).message });
     } finally {
@@ -158,6 +178,27 @@ export default function AdminPanel() {
       solution: "Ask user to share correct UTR/screenshot or pay again using the official UPI link.",
     }));
 
+  const updateSettings = async (patch: Partial<AdminSettings>) => {
+    setActionLoading("settings");
+    try {
+      const data = await adminApi("/api/admin/settings", "PATCH", patch);
+      setSettings(data.settings);
+      toast({ title: "Settings updated", description: "Admin automation settings saved." });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Settings update failed", description: (e as Error).message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await adminApi("/api/auth/logout", "POST");
+    } catch {}
+    logout();
+    setLocation("/login");
+  };
+
   const openUserAccount = async (target: AdminUser) => {
     setActionLoading(target.id + "Open");
     try {
@@ -196,10 +237,67 @@ export default function AdminPanel() {
             <p className="text-muted-foreground text-sm">Manage all users, plans, and access</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading} className="gap-2">
-          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading} className="gap-2">
+            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2 text-destructive">
+            <LogOut className="w-4 h-4" /> Logout
+          </Button>
+        </div>
       </div>
+
+      {settings && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" /> Admin Controls
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-3">
+            <Button
+              variant={settings.adminAlertsEnabled ? "default" : "outline"}
+              className="h-auto justify-start gap-3 py-4"
+              disabled={actionLoading === "settings"}
+              onClick={() => updateSettings({ adminAlertsEnabled: !settings.adminAlertsEnabled })}
+            >
+              {settings.adminAlertsEnabled ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
+              <span className="text-left">
+                <span className="block font-semibold">WhatsApp alerts</span>
+                <span className="block text-xs opacity-80">{settings.adminAlertsEnabled ? "On" : "Off"}</span>
+              </span>
+            </Button>
+            <Button
+              variant={settings.socialAutoPostEnabled ? "default" : "outline"}
+              className="h-auto justify-start gap-3 py-4"
+              disabled={actionLoading === "settings"}
+              onClick={() => updateSettings({ socialAutoPostEnabled: !settings.socialAutoPostEnabled })}
+            >
+              <Share2 className="w-5 h-5" />
+              <span className="text-left">
+                <span className="block font-semibold">WA to Meta post</span>
+                <span className="block text-xs opacity-80">
+                  FB {socialConfig?.facebookConfigured ? "ready" : "missing"} · IG {socialConfig?.instagramConfigured ? "ready" : "missing"}
+                </span>
+              </span>
+            </Button>
+            <Button
+              variant={settings.linkedinAutoPostEnabled ? "default" : "outline"}
+              className="h-auto justify-start gap-3 py-4"
+              disabled={actionLoading === "settings"}
+              onClick={() => updateSettings({ linkedinAutoPostEnabled: !settings.linkedinAutoPostEnabled })}
+            >
+              <Linkedin className="w-5 h-5" />
+              <span className="text-left">
+                <span className="block font-semibold">LinkedIn daily posts</span>
+                <span className="block text-xs opacity-80">
+                  API {socialConfig?.linkedinConfigured ? "ready" : "missing"} · Images {socialConfig?.linkedinImagesConfigured ? "ready" : "missing"}
+                </span>
+              </span>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats row */}
       {stats && (

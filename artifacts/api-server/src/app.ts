@@ -34,6 +34,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+app.use("/social-media", express.static(join(process.cwd(), "..", "..", ".social-media")));
 
 const staticDirCandidates = [
   process.env.WEB_DIST_DIR,

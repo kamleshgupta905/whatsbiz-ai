@@ -1,6 +1,7 @@
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
+  downloadMediaMessage,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
   type WASocket,
@@ -14,6 +15,8 @@ import { join } from "path";
 import pino from "pino";
 import OpenAI from "openai";
 import { AI_MODEL, createChatCompletion, hasAIProvider } from "./ai-provider.js";
+import { getAdminAutomationSettings, getAdminUser } from "./admin-settings.js";
+import { publishAdminWhatsAppMedia } from "./social-automation.js";
 
 const silentLogger = pino({ level: "silent" });
 
@@ -36,8 +39,6 @@ const sessions = new Map<string, SessionState>();
 const healthTimers = new Map<string, ReturnType<typeof setInterval>>();
 const kbCache = new Map<string, KBCache>();
 const KB_TTL_MS = 120_000; // 2 minutes
-const ADMIN_ALERT_EMAIL = process.env.ADMIN_ALERT_EMAIL ?? "kamleshg9569@gmail.com";
-
 type CloudApiConfig = {
   mode: "cloud_api";
   phoneNumberId: string;
@@ -424,9 +425,9 @@ async function createSocket(userId: string, state: SessionState, authDir: string
       const incomingText =
         msg.message.conversation ??
         msg.message.extendedTextMessage?.text ??
+        msg.message.imageMessage?.caption ??
+        msg.message.videoMessage?.caption ??
         null;
-
-      if (!incomingText) continue;
 
       // Format phone number with + prefix (WhatsApp JID gives raw digits e.g. 919876543210)
       const rawPhone = remoteJid.split("@")[0];
@@ -435,6 +436,40 @@ async function createSocket(userId: string, state: SessionState, authDir: string
 
       // Fire-and-forget read receipt
       sock.readMessages([msg.key]).catch(() => {});
+
+      const imageMessage = msg.message.imageMessage;
+      const videoMessage = msg.message.videoMessage;
+      if (imageMessage || videoMessage) {
+        const admin = await getAdminUser();
+        if (admin?.id === userId) {
+          void (async () => {
+            try {
+              const rawMedia = await downloadMediaMessage(
+                msg,
+                "buffer",
+                {},
+                { logger: silentLogger, reuploadRequest: sock.updateMediaMessage } as any,
+              );
+              const buffer = Buffer.isBuffer(rawMedia) ? rawMedia : Buffer.from(rawMedia as Uint8Array);
+              await publishAdminWhatsAppMedia({
+                buffer,
+                mimeType: imageMessage?.mimetype ?? videoMessage?.mimetype ?? "application/octet-stream",
+                caption: incomingText,
+                isVideo: Boolean(videoMessage),
+                thumbnail: videoMessage?.jpegThumbnail ? Buffer.from(videoMessage.jpegThumbnail) : null,
+              });
+              await sock.sendMessage(remoteJid, { text: "Social auto-post publish ho gaya." });
+            } catch (err) {
+              await sock.sendMessage(remoteJid, {
+                text: `Social auto-post failed: ${err instanceof Error ? err.message : String(err)}`,
+              }).catch(() => {});
+            }
+          })();
+          continue;
+        }
+      }
+
+      if (!incomingText) continue;
 
       // ── DND / opt-out detection ─────────────────────────────────────────────
       // If the customer sends a STOP-like keyword, mark them DND and reply once
@@ -588,7 +623,10 @@ export async function sendWhatsAppText(userId: string, phone: string, message: s
 
 export async function sendAdminAlert(message: string): Promise<void> {
   try {
-    const [admin] = await db.select().from(usersTable).where(eq(usersTable.email, ADMIN_ALERT_EMAIL));
+    const settings = await getAdminAutomationSettings();
+    if (!settings.adminAlertsEnabled) return;
+
+    const admin = await getAdminUser();
     if (!admin?.phone) return;
     await sendWhatsAppText(admin.id, admin.phone, message);
   } catch (err) {

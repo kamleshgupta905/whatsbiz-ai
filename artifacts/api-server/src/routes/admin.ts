@@ -3,6 +3,7 @@ import { db, usersTable, subscriptionsTable, paymentsTable } from "@workspace/db
 import { eq, sql } from "drizzle-orm";
 import { generateToken, requireAuth, storeToken, type AuthRequest } from "../lib/auth";
 import { sendAdminAlert, sendWhatsAppText } from "../lib/whatsapp-manager";
+import { getAdminAutomationSettings, updateAdminAutomationSettings, type AdminAutomationSettings } from "../lib/admin-settings.js";
 
 const router = Router();
 
@@ -23,6 +24,38 @@ function requireAdmin(req: Parameters<typeof requireAuth>[0], res: Parameters<ty
     next();
   });
 }
+
+router.get("/admin/settings", requireAdmin, async (_req, res) => {
+  const settings = await getAdminAutomationSettings();
+  res.json({
+    settings,
+    socialConfig: {
+      facebookConfigured: Boolean(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN),
+      instagramConfigured: Boolean(process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID && process.env.META_PAGE_ACCESS_TOKEN),
+      linkedinConfigured: Boolean(process.env.LINKEDIN_ACCESS_TOKEN && process.env.LINKEDIN_AUTHOR_URN),
+      linkedinImagesConfigured: Boolean(process.env.LINKEDIN_IMAGE_ASSET_URNS),
+      publicBaseUrl: process.env.PUBLIC_BASE_URL ?? process.env.APP_PUBLIC_URL ?? "http://54.242.177.236",
+    },
+  });
+});
+
+router.patch("/admin/settings", requireAdmin, async (req, res) => {
+  const body = req.body as Partial<AdminAutomationSettings>;
+  const patch: Partial<AdminAutomationSettings> = {};
+
+  for (const key of ["adminAlertsEnabled", "socialAutoPostEnabled", "linkedinAutoPostEnabled"] as const) {
+    if (body[key] !== undefined) {
+      if (typeof body[key] !== "boolean") {
+        res.status(400).json({ error: `${key} must be boolean` });
+        return;
+      }
+      patch[key] = body[key];
+    }
+  }
+
+  const settings = await updateAdminAutomationSettings(patch);
+  res.json({ settings });
+});
 
 // ─── List all users with their subscription ──────────────────────────────────
 router.get("/admin/users", requireAdmin, async (_req, res) => {
