@@ -4,6 +4,7 @@ import { logger } from "./lib/logger";
 import { db, usersTable, subscriptionsTable, knowledgeBaseTable, whatsappSessionsTable } from "@workspace/db";
 import { eq, ne } from "drizzle-orm";
 import { startSession } from "./lib/whatsapp-manager";
+import { startBroadcastScheduler } from "./routes/broadcasts";
 import { readdir } from "fs/promises";
 import { join } from "path";
 import { hashPassword } from "./lib/auth";
@@ -100,6 +101,8 @@ app.listen(port, (err) => {
   void ensureAdminAccount().catch((err) => {
     console.error("[Admin] Failed to ensure admin account:", err);
   });
+
+  startBroadcastScheduler();
 
   // Auto-reconnect users who were previously connected (only if cred files exist)
   void (async () => {

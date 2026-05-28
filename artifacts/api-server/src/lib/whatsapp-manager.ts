@@ -598,21 +598,13 @@ export async function sendAdminAlert(message: string): Promise<void> {
 
 // ─── Safe broadcast constants (WhatsApp ban prevention) ──────────────────────
 // Rules:
-//   • Max 200 messages per broadcast (daily safe limit for non-business accounts)
-//   • Batch of 20 messages, then a 3–5 min cooldown between batches
-//   • Random 8–20 s delay between individual messages within a batch
+//   • Max 45 messages per daily broadcast window
+//   • 1 minute delay between individual messages
+//   • Default daily window is 8:00 AM to 8:50 AM IST
 //   • Slight message variation per recipient to avoid identical-message detection
 
-const BATCH_SIZE = 20;
-const MSG_DELAY_MIN_MS = 8_000;   // 8 seconds
-const MSG_DELAY_MAX_MS = 20_000;  // 20 seconds
-const BATCH_PAUSE_MIN_MS = 3 * 60 * 1000;  // 3 minutes
-const BATCH_PAUSE_MAX_MS = 5 * 60 * 1000;  // 5 minutes
-const DAILY_HARD_LIMIT = 200;
-
-function randomBetween(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+export const BROADCAST_DAILY_LIMIT = 45;
+export const BROADCAST_MESSAGE_DELAY_MS = 60_000;
 
 function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
@@ -643,8 +635,7 @@ export async function sendBroadcastMessages(
   let sent = 0;
   let failed = 0;
 
-  // Hard cap — never blast more than 200 in one go
-  const recipients = phones.slice(0, DAILY_HARD_LIMIT);
+  const recipients = phones.slice(0, BROADCAST_DAILY_LIMIT);
 
   for (let i = 0; i < recipients.length; i++) {
     const phone = recipients[i];
@@ -666,17 +657,7 @@ export async function sendBroadcastMessages(
     const isLastMessage = i === recipients.length - 1;
     if (isLastMessage) break;
 
-    const isEndOfBatch = (i + 1) % BATCH_SIZE === 0;
-
-    if (isEndOfBatch) {
-      // Long cooldown between batches
-      const pause = randomBetween(BATCH_PAUSE_MIN_MS, BATCH_PAUSE_MAX_MS);
-      await sleep(pause);
-    } else {
-      // Random delay between individual messages
-      const delay = randomBetween(MSG_DELAY_MIN_MS, MSG_DELAY_MAX_MS);
-      await sleep(delay);
-    }
+    await sleep(BROADCAST_MESSAGE_DELAY_MS);
   }
 
   return { sent, failed };

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Megaphone, Plus, Clock, Users, CheckCircle2, Send,
-  Loader2, AlertCircle, ShieldCheck, Timer, Layers, Crown
+  Loader2, AlertCircle, ShieldCheck, Timer, Layers
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -38,15 +38,9 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
   failed:    { label: "Failed",    variant: "destructive" },
 };
 
-function estimateTime(count: number): string {
-  const safeCount = Math.min(count, 200);
-  const batches = Math.ceil(safeCount / 20);
-  const msgDelayAvg = 14;
-  const batchPauseAvg = 4 * 60;
-  const totalSecs = safeCount * msgDelayAvg + (batches - 1) * batchPauseAvg;
-  if (totalSecs < 60) return `~${totalSecs}s`;
-  if (totalSecs < 3600) return `~${Math.round(totalSecs / 60)} min`;
-  return `~${(totalSecs / 3600).toFixed(1)} hrs`;
+function estimateDays(count: number): string {
+  const days = Math.ceil(Math.max(0, count) / 45);
+  return days <= 1 ? "1 day" : `${days} days`;
 }
 
 export default function Broadcasts() {
@@ -68,10 +62,9 @@ export default function Broadcasts() {
   const phoneCount = phones.split("\n").map(p => p.trim()).filter(Boolean).length;
   const estimatedRecipients = recipientType === "custom" ? phoneCount : undefined;
 
-  // Plan limits from API response (may not be available if using generated hook without extension)
-  const apiLimits = (data as any)?.limits as { broadcastLimit: number; isPremium: boolean; plan: string } | undefined;
-  const broadcastLimit = apiLimits?.broadcastLimit ?? 25;
-  const isPremium = apiLimits?.isPremium ?? false;
+  const apiLimits = (data as any)?.limits as { dailyLimit: number; defaultWindow: string; delaySeconds: number } | undefined;
+  const dailyLimit = apiLimits?.dailyLimit ?? 45;
+  const defaultWindow = apiLimits?.defaultWindow ?? "8:00 AM to 8:50 AM IST";
 
   const handleCreate = async () => {
     if (!name.trim() || !message.trim()) {
@@ -84,9 +77,15 @@ export default function Broadcasts() {
       if (recipientType === "custom") {
         payload.recipients = phones.split("\n").map(p => p.trim()).filter(Boolean);
       }
-      await apiPost("/api/broadcasts", payload);
+      const created = await apiPost("/api/broadcasts", payload);
       await queryClient.invalidateQueries({ queryKey: ["broadcasts"] });
-      toast({ title: "Broadcast created!", description: "Click 'Send Now' to send it to your contacts." });
+      const invalidCount = created?.invalidCount ?? 0;
+      const duplicateCount = created?.duplicateCount ?? 0;
+      toast({
+        title: "Broadcast saved",
+        description: `${created?.validCount ?? 0} valid numbers saved. ${invalidCount} invalid and ${duplicateCount} duplicate numbers skipped.`,
+        duration: 9000,
+      });
       setShowCreate(false);
       resetForm();
     } catch (e) {
@@ -101,13 +100,9 @@ export default function Broadcasts() {
     try {
       const result = await apiPost(`/api/broadcasts/${id}/send`);
       await queryClient.invalidateQueries({ queryKey: ["broadcasts"] });
-      const capped = result?.capped;
-      const cappedTo = result?.cappedTo ?? broadcastLimit;
       toast({
-        title: capped ? `Sending to ${cappedTo} contacts (plan limit)` : "Broadcast started!",
-        description: capped
-          ? `Your plan allows ${cappedTo} msgs/broadcast. ${estimateTime(cappedTo)} estimated. Upgrade for 50.`
-          : `Sending to ${Math.min(recipientCount, broadcastLimit)} contacts. ${estimateTime(recipientCount)} estimated.`,
+        title: "Daily broadcast automation started",
+        description: `${recipientCount} numbers queued. ${dailyLimit} messages/day, ${defaultWindow}, 1 min delay.`,
         duration: 8000,
       });
     } catch (e) {
@@ -128,19 +123,9 @@ export default function Broadcasts() {
           <p className="text-muted-foreground">Send bulk WhatsApp messages to all your customers at once.</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Plan badge */}
-          {isPremium ? (
-            <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border bg-primary/5 border-primary/20 text-primary">
-              <Crown className="w-3 h-3" /> Premium · 50 msgs/broadcast
-            </div>
-          ) : (
-            <button
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors"
-              onClick={() => window.location.href = "/billing"}
-            >
-              <Crown className="w-3 h-3" /> Free · 25 msgs · Upgrade for 50
-            </button>
-          )}
+          <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border bg-primary/5 border-primary/20 text-primary">
+            <Timer className="w-3 h-3" /> Daily {dailyLimit} msgs · {defaultWindow}
+          </div>
           <Button className="gap-2" onClick={() => setShowCreate(true)}>
             <Plus className="w-4 h-4" /> New Broadcast
           </Button>
@@ -159,8 +144,8 @@ export default function Broadcasts() {
               <Timer className="w-3.5 h-3.5 text-green-700" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-green-900">8–20 sec delay</p>
-              <p className="text-xs text-green-700">Random gap between each message — human-like sending pattern</p>
+              <p className="text-xs font-semibold text-green-900">1 min delay</p>
+              <p className="text-xs text-green-700">Each WhatsApp message goes with a 1 minute safety gap.</p>
             </div>
           </div>
           <div className="flex items-start gap-2.5">
@@ -168,8 +153,8 @@ export default function Broadcasts() {
               <Layers className="w-3.5 h-3.5 text-green-700" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-green-900">Batches of 20</p>
-              <p className="text-xs text-green-700">3–5 min cooldown after every 20 messages to avoid detection</p>
+              <p className="text-xs font-semibold text-green-900">Daily 8:00-8:50 AM</p>
+              <p className="text-xs text-green-700">Default automation window runs every morning in IST.</p>
             </div>
           </div>
           <div className="flex items-start gap-2.5">
@@ -177,14 +162,8 @@ export default function Broadcasts() {
               <ShieldCheck className="w-3.5 h-3.5 text-green-700" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-green-900">
-                {isPremium ? "50 msgs/broadcast" : "25 msgs/broadcast (Free)"}
-              </p>
-              <p className="text-xs text-green-700">
-                {isPremium
-                  ? "Premium plan — up to 50 recipients per broadcast"
-                  : "Free plan — capped at 25. Upgrade to send up to 50."}
-              </p>
+              <p className="text-xs font-semibold text-green-900">No duplicate sends</p>
+              <p className="text-xs text-green-700">Duplicate and invalid numbers are skipped while saving.</p>
             </div>
           </div>
         </div>
@@ -247,7 +226,7 @@ export default function Broadcasts() {
               {data.broadcasts.map((b) => {
                 const badge = STATUS_BADGE[b.status] ?? { label: b.status, variant: "secondary" as const };
                 const isSending = sendingId === b.id || b.status === "sending";
-                const cappedCount = Math.min(b.recipientCount, broadcastLimit);
+                const remainingCount = (b as any).remainingCount ?? Math.max(0, b.recipientCount - b.deliveredCount - b.failedCount);
                 return (
                   <div key={b.id} className="p-4 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -261,14 +240,11 @@ export default function Broadcasts() {
                           <Clock className="w-3 h-3" />{new Date(b.createdAt).toLocaleDateString("en-IN")}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Users className="w-3 h-3" />{cappedCount} recipients
-                          {b.recipientCount > broadcastLimit && (
-                            <span className="text-amber-600 ml-1">(capped at {broadcastLimit})</span>
-                          )}
+                          <Users className="w-3 h-3" />{b.recipientCount} saved · {remainingCount} remaining
                         </span>
-                        {b.status === "draft" && cappedCount > 0 && (
+                        {b.status === "draft" && b.recipientCount > 0 && (
                           <span className="flex items-center gap-1 text-blue-600">
-                            <Timer className="w-3 h-3" /> Est. {estimateTime(cappedCount)}
+                            <Timer className="w-3 h-3" /> Est. {estimateDays(b.recipientCount)}
                           </span>
                         )}
                         {b.deliveredCount > 0 && (
@@ -291,7 +267,7 @@ export default function Broadcasts() {
                         disabled={isSending}
                       >
                         {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        {isSending ? "Sending…" : "Send Now"}
+                        {isSending ? "Starting..." : "Start Daily Automation"}
                       </Button>
                     )}
                   </div>
@@ -346,12 +322,7 @@ export default function Broadcasts() {
               </Select>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-green-500" />
-                Max {broadcastLimit} recipients on your plan
-                {!isPremium && (
-                  <button className="text-amber-600 underline ml-1" onClick={() => { setShowCreate(false); window.location.href = "/billing"; }}>
-                    Upgrade for 50
-                  </button>
-                )}
+                Unlimited numbers can be saved. Automation sends {dailyLimit} messages/day.
               </p>
             </div>
 
@@ -366,10 +337,7 @@ export default function Broadcasts() {
                 />
                 {phoneCount > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {phoneCount} numbers · Est. {estimateTime(Math.min(phoneCount, broadcastLimit))}
-                    {phoneCount > broadcastLimit && (
-                      <span className="text-amber-600 ml-1">— only first {broadcastLimit} will be sent</span>
-                    )}
+                    {phoneCount} numbers · Est. {estimateDays(phoneCount)}
                   </p>
                 )}
               </div>
@@ -379,8 +347,7 @@ export default function Broadcasts() {
               <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 flex items-start gap-2">
                 <Timer className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-600" />
                 <span>
-                  Sending {Math.min(estimatedRecipients, broadcastLimit)} messages will take approximately{" "}
-                  <strong>{estimateTime(Math.min(estimatedRecipients, broadcastLimit))}</strong> due to safety delays. Keep the app open until complete.
+                  {estimatedRecipients} numbers will be saved. Automation sends <strong>{dailyLimit} messages daily</strong> from {defaultWindow}, with 1 minute delay. It stops automatically when all numbers are ended.
                 </span>
               </div>
             )}
