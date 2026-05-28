@@ -14,6 +14,7 @@ type MediaInput = {
 
 const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL ?? process.env.APP_PUBLIC_URL ?? "http://54.242.177.236").replace(/\/+$/, "");
 const SOCIAL_MEDIA_DIR = join(process.cwd(), "..", "..", ".social-media");
+const WHATS_BIZ_LINK = process.env.WHATSBIZ_PUBLIC_URL ?? PUBLIC_BASE_URL;
 
 function extensionForMime(mimeType: string): string {
   if (mimeType.includes("png")) return "png";
@@ -178,25 +179,47 @@ async function publishLinkedInImage(text: string, assetUrn: string) {
 }
 
 async function generateLinkedInPost(kind: "news" | "tool" | "jobs"): Promise<string> {
+  const featureContext = [
+    "WhatsBiz AI is an AI-powered WhatsApp business automation platform.",
+    "Main features: WhatsApp AI auto-replies, QR/cloud WhatsApp connection, lead capture CRM, lead scraper, safe bulk broadcasts, admin alerts, payment/subscription alerts, Facebook/Instagram publishing, LinkedIn daily posting, and AI-generated captions.",
+    `Always include this live app link: ${WHATS_BIZ_LINK}`,
+  ].join(" ");
   const prompt = kind === "news"
-    ? "Write a LinkedIn post about latest AI news for founders and marketers."
+    ? `Write a LinkedIn post that connects current AI automation trends to WhatsBiz AI and its WhatsApp/business automation features. ${featureContext}`
     : kind === "tool"
-      ? "Write a LinkedIn post about a useful AI agent or new AI tool."
-      : "Write a LinkedIn post about remote job websites and AI career opportunities.";
+      ? `Write a LinkedIn post focused mostly on WhatsBiz AI as an AI agent/tool for WhatsApp business automation. Explain practical use cases and features. ${featureContext}`
+      : `Write a LinkedIn post focused mostly on how WhatsBiz AI helps businesses automate follow-ups, leads, and remote sales workflows. ${featureContext}`;
 
   if (!hasAIProvider()) {
-    return `${prompt}\n\nAI is changing how teams work, hire, and grow. Save this and follow for practical updates.\n\n#AI #AIAgents #RemoteJobs #AITools #FutureOfWork`;
+    return [
+      "WhatsBiz AI helps businesses automate WhatsApp growth workflows.",
+      "",
+      "It can handle AI auto-replies, lead capture, CRM follow-ups, safe broadcasts, admin alerts, payment alerts, and social posting from one dashboard.",
+      "",
+      `Live app: ${WHATS_BIZ_LINK}`,
+      "",
+      "#WhatsBizAI #WhatsAppAutomation #AI #AIAgents #BusinessAutomation #LeadGeneration #StartupIndia",
+    ].join("\n");
   }
 
   const response = await createChatCompletion({
     model: process.env.AI_MODEL ?? "llama-3.1-8b-instant",
-    max_tokens: 260,
+    max_tokens: 340,
     messages: [
-      { role: "system", content: "Write engaging LinkedIn posts. No markdown. Add strong hook, short paragraphs, CTA, and relevant hashtags." },
+      {
+        role: "system",
+        content: [
+          "Write engaging LinkedIn posts for WhatsBiz AI.",
+          "At least 70% of the post must be about WhatsBiz AI, its features, benefits, and use cases.",
+          "Always include the live app link exactly once.",
+          "No markdown tables. Use short paragraphs, a clear CTA, and relevant hashtags.",
+        ].join(" "),
+      },
       { role: "user", content: prompt },
     ],
   });
-  return response.choices[0]?.message?.content?.trim() || "";
+  const content = response.choices[0]?.message?.content?.trim() || "";
+  return content.includes(WHATS_BIZ_LINK) ? content : `${content}\n\nLive app: ${WHATS_BIZ_LINK}`;
 }
 
 type LinkedInSlot = {
