@@ -152,6 +152,40 @@ async function publishLinkedInImage(text: string, assetUrn: string) {
   const author = process.env.LINKEDIN_AUTHOR_URN;
   if (!token || !author) throw new Error("LINKEDIN_ACCESS_TOKEN or LINKEDIN_AUTHOR_URN missing");
 
+  if (assetUrn.startsWith("urn:li:digitalmediaAsset:")) {
+    const ugcAuthor = process.env.LINKEDIN_MEMBER_URN;
+    if (!ugcAuthor) throw new Error("LINKEDIN_MEMBER_URN missing for legacy LinkedIn image assets");
+
+    const res = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-Restli-Protocol-Version": "2.0.0",
+      },
+      body: JSON.stringify({
+        author: ugcAuthor,
+        lifecycleState: "PUBLISHED",
+        specificContent: {
+          "com.linkedin.ugc.ShareContent": {
+            shareCommentary: { text },
+            shareMediaCategory: "IMAGE",
+            media: [
+              {
+                status: "READY",
+                media: assetUrn,
+                title: { text: "WhatsBiz AI automation" },
+              },
+            ],
+          },
+        },
+        visibility: { "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC" },
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return;
+  }
+
   const res = await fetch("https://api.linkedin.com/rest/posts", {
     method: "POST",
     headers: {
