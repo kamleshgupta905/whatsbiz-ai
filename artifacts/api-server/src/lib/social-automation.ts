@@ -12,9 +12,20 @@ type MediaInput = {
   thumbnail?: Buffer | null;
 };
 
+type MetaImageSlot = {
+  key: string;
+  imageUrl: string;
+  topic: string;
+};
+
 const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL ?? process.env.APP_PUBLIC_URL ?? "http://54.242.177.236").replace(/\/+$/, "");
 const SOCIAL_MEDIA_DIR = join(process.cwd(), "..", "..", ".social-media");
 const WHATS_BIZ_LINK = process.env.WHATSBIZ_PUBLIC_URL ?? PUBLIC_BASE_URL;
+const META_DAILY_IMAGES = [
+  `${PUBLIC_BASE_URL}/opengraph.jpg`,
+  `${PUBLIC_BASE_URL}/icon.png`,
+  `${PUBLIC_BASE_URL}/logo.png`,
+];
 
 function extensionForMime(mimeType: string): string {
   if (mimeType.includes("png")) return "png";
@@ -120,6 +131,24 @@ export async function publishAdminWhatsAppMedia(input: MediaInput): Promise<void
   if (failures.length) {
     throw new Error(failures.join("\n"));
   }
+}
+
+async function publishMetaImageUrl(imageUrl: string, caption: string): Promise<void> {
+  const failures: string[] = [];
+
+  try {
+    await publishToFacebook(imageUrl, caption, false);
+  } catch (err) {
+    failures.push(`Facebook: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  try {
+    await publishToInstagram(imageUrl, caption, false);
+  } catch (err) {
+    failures.push(`Instagram: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  if (failures.length) throw new Error(failures.join("\n"));
 }
 
 async function publishLinkedInText(text: string) {
@@ -263,6 +292,7 @@ type LinkedInSlot = {
 };
 
 const postedLinkedInSlots = new Set<string>();
+const postedMetaSlots = new Set<string>();
 
 function getLinkedInSlot(now = new Date()): LinkedInSlot | null {
   const istNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
@@ -297,5 +327,48 @@ export function startLinkedInScheduler() {
       }
       postedLinkedInSlots.add(slot.key);
     })().catch((err) => console.error("[LinkedIn] Auto post failed:", err instanceof Error ? err.message : err));
+  }, 60_000);
+}
+
+function getMetaImageSlot(now = new Date()): MetaImageSlot | null {
+  const istNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const minute = istNow.getMinutes();
+  const hour = istNow.getHours();
+  const dateKey = istNow.toISOString().slice(0, 10);
+
+  const slotIndex = [
+    { hour: 9, minute: 30 },
+    { hour: 13, minute: 30 },
+    { hour: 17, minute: 30 },
+  ].findIndex((slot) => slot.hour === hour && slot.minute === minute);
+  if (slotIndex === -1) return null;
+
+  const topics = [
+    "WhatsBiz AI WhatsApp automation, AI replies, lead capture, and business growth",
+    "WhatsBiz AI CRM, broadcast safety limits, admin alerts, and social posting",
+    "WhatsBiz AI daily automation for WhatsApp, Facebook, Instagram, and LinkedIn",
+  ];
+
+  return {
+    key: `${dateKey}-meta-${slotIndex}`,
+    imageUrl: META_DAILY_IMAGES[slotIndex] as string,
+    topic: topics[slotIndex] as string,
+  };
+}
+
+export function startMetaImageScheduler() {
+  setInterval(() => {
+    void (async () => {
+      const settings = await getAdminAutomationSettings();
+      const slot = getMetaImageSlot();
+      if (!settings.socialAutoPostEnabled || !slot || postedMetaSlots.has(slot.key)) return;
+
+      const caption = await buildViralCaption(
+        `WhatsBiz AI helps businesses automate WhatsApp replies, leads, broadcasts, alerts, and social posting.\n\nLive app: ${WHATS_BIZ_LINK}`,
+        slot.topic,
+      );
+      await publishMetaImageUrl(slot.imageUrl, caption.includes(WHATS_BIZ_LINK) ? caption : `${caption}\n\nLive app: ${WHATS_BIZ_LINK}`);
+      postedMetaSlots.add(slot.key);
+    })().catch((err) => console.error("[Meta] Auto image post failed:", err instanceof Error ? err.message : err));
   }, 60_000);
 }

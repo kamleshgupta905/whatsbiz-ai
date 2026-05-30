@@ -5,7 +5,7 @@ import { db, usersTable, subscriptionsTable, knowledgeBaseTable, whatsappSession
 import { eq, ne } from "drizzle-orm";
 import { startSession } from "./lib/whatsapp-manager";
 import { startBroadcastScheduler } from "./routes/broadcasts";
-import { startLinkedInScheduler } from "./lib/social-automation.js";
+import { startLinkedInScheduler, startMetaImageScheduler } from "./lib/social-automation.js";
 import { readdir } from "fs/promises";
 import { join } from "path";
 import { hashPassword } from "./lib/auth";
@@ -105,6 +105,7 @@ app.listen(port, (err) => {
 
   startBroadcastScheduler();
   startLinkedInScheduler();
+  startMetaImageScheduler();
 
   // Auto-reconnect users who were previously connected (only if cred files exist)
   void (async () => {
